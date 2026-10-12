@@ -137,7 +137,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       <div class="dist" id="wdist"></div>
     </div>
     <div class="sec note">
-      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Conveyors, rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
+      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Conveyors are shown on the right-hand side facing inbye, in all roadways except the return airways; which other roads were intakes or returns is not yet mapped. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
       <button class="btn" id="wModel" style="margin-top:8px">Show this spot in the 3D model</button>
     </div>
   </div>
@@ -150,7 +150,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="row"><label><input type="checkbox" id="L_hh"><span class="sw" style="background:var(--hh)"></span>High Hazel</label><span class="lvl">−210.0</span></div>
     <div class="row"><label><input type="checkbox" id="L_th"><span class="sw" style="background:var(--th)"></span>Top Hard</label><span class="lvl">−315.3</span></div>
     <div class="row"><label><input type="checkbox" id="L_tq" checked><span class="sw" style="background:var(--tq)"></span>Threequarter workings</label><span class="lvl">−583.3</span></div>
-    <div class="note">Levels are the No.&nbsp;2 shaft insets. Clowne, High Hazel and Top Hard are projected parallel to the Threequarter floor from those insets, as a guide until their own plans are added.</div>
+    <div class="row"><label><input type="checkbox" id="L_road" checked><span class="sw" style="background:#e4ebef;border:1px solid var(--rule)"></span>Roadways (tunnels)</label></div>
+    <div class="row"><label><input type="checkbox" id="L_face" checked><span class="sw" style="background:#ffc400"></span>Faces (panel ends)</label></div>
+    <div class="row"><label><input type="checkbox" id="L_ret" checked><span class="sw" style="background:#d7263d"></span>Return airways, No.&nbsp;2 Shaft</label></div>
+    <div class="kv"><span>Tunnel size on screen</span><b id="tunV">14 m</b></div>
+    <input type="range" id="tunW" min="4" max="40" step="1" value="14" aria-label="Tunnel size">
+    <div class="note">Levels are the No.&nbsp;2 shaft insets. Clowne, High Hazel and Top Hard are projected parallel to the Threequarter floor from those insets, as a guide until their own plans are added. Roadways are traced from the plans; faces are picked out automatically as the short cross-panel roads at panel ends, so a few may be missed or mislabelled. Tunnels are drawn wider than their real 4.9&nbsp;m so they show at mine scale.</div>
   </div>
 
   <div class="sec">
@@ -287,7 +292,8 @@ function setTheme(){
 // ---------- data ----------
 const TL=new THREE.TextureLoader();
 const TILES=[[0,0,448300,451325,378000,374050],[0,1,451325,454350,378000,374050],[1,0,448300,451325,374050,370100],[1,1,451325,454350,374050,370100]];
-const [zbuf,groundTex,alphaImg,...tileTex]=await Promise.all([
+const [WALK,zbuf,groundTex,alphaImg,...tileTex]=await Promise.all([
+  fetch('walk.json').then(r=>r.json()),
   fetch('z.json').then(r=>r.json()).then(j=>Uint8Array.from(atob(j.b64),c=>c.charCodeAt(0)).buffer),
   TL.loadAsync('ground.jpg'),
   new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.src='seam_alpha.png'}),
@@ -371,6 +377,36 @@ const gridGroup=new THREE.Group(); world.add(gridGroup);
   gridGroup.add(mk(pts,.45)); const gl=mk(gp,.25); gl.material.clippingPlanes=[]; clipMat(gl.material); gridGroup.add(gl);
 }
 
+// ---------- roadways & faces as tunnels on the seam ----------
+const roadMat=new THREE.MeshLambertMaterial({color:0xe4ebef,emissive:0x1d2a33});
+const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0x4a3300});
+const retMat=new THREE.MeshLambertMaterial({color:0xd7263d,emissive:0x3a0710});
+const tunGroup=new THREE.Group(); scene.add(tunGroup);   // in scene units: y already multiplied by VE
+let tunPending=false;
+function buildModelTunnels(){
+  tunPending=false; tunGroup.children.forEach(m=>m.geometry.dispose()); tunGroup.clear();
+  const r=+$('tunW').value/2, SEG=8;
+  const acc={r:{p:[],i:[]},f:{p:[],i:[]},a:{p:[],i:[]}};
+  WALK.tunnels.forEach((line,ti)=>{
+    const kd=WALK.kinds[ti], A=acc[kd==='f'||kd==='a'?kd:'r'];
+    const pts=line.filter((_,k)=>k%2===0||k===line.length-1).map(([E,N,z])=>[wx(E),z*VE+r*0.55,wz(N)]);
+    if(pts.length<2) return; const base=A.p.length/3;
+    pts.forEach((c,k)=>{const a=pts[Math.max(0,k-1)],b=pts[Math.min(pts.length-1,k+1)];
+      let tx=b[0]-a[0],tz=b[2]-a[2];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
+      for(let j=0;j<SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);}});
+    for(let k=0;k<pts.length-1;k++)for(let j=0;j<SEG;j++){const a=base+k*SEG+j,b=base+k*SEG+(j+1)%SEG,c=a+SEG,d=b+SEG;A.i.push(a,c,b,b,c,d);}
+  });
+  for(const [key,mat] of [['r',roadMat],['f',faceMat],['a',retMat]]){const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setIndex(acc[key].i);g.computeVertexNormals();
+    const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',f:'L_face',a:'L_ret'}[key]).checked;tunGroup.add(m);}
+}
+function queueTunnels(){if(!tunPending){tunPending=true;requestAnimationFrame(buildModelTunnels);}}
+buildModelTunnels();
+$('tunW').addEventListener('input',e=>{$('tunV').textContent=e.target.value+' m';queueTunnels();});
+$('L_road').addEventListener('change',e=>{const m=tunGroup.getObjectByName('r');if(m)m.visible=e.target.checked;});
+$('L_face').addEventListener('change',e=>{const m=tunGroup.getObjectByName('f');if(m)m.visible=e.target.checked;});
+$('L_ret').addEventListener('change',e=>{const m=tunGroup.getObjectByName('a');if(m)m.visible=e.target.checked;});
+
 // ---------- section faces ----------
 const BAND=['#a99a7f','#8c8f86','#7f8a8c','#6f7378','#5b5e63'];
 function sectionGeom(Ea,Na,Eb,Nb){
@@ -440,7 +476,7 @@ function applyCut(){
   else if(cutMode==='ns'){clipPlanes=[planeE];clipInter=false; cutGroup.add(new THREE.Mesh(sectionGeom(Ecut,G.N0,Ecut,G.N1),cutMat));}
   else {clipPlanes=[];}
   $('eCut').disabled=cutMode==='ew'||cutMode==='none'; $('nCut').disabled=cutMode==='ns'||cutMode==='none';
-  const tqm=[...tqPlanMats,...tqDepthMats]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
+  const tqm=[...tqPlanMats,...tqDepthMats,roadMat,faceMat,retMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
   for(const m of mats){m.clippingPlanes=clipPlanes;m.clipIntersection=clipInter;m.needsUpdate=true;}
 }
 document.querySelectorAll('[data-cut]').forEach(b=>b.onclick=()=>{cutMode=b.dataset.cut;
@@ -455,7 +491,7 @@ $('m_plan').onclick=()=>{tqMeshes.forEach((m,k)=>m.material=tqPlanMats[k]);$('m_
 $('m_depth').onclick=()=>{tqMeshes.forEach((m,k)=>m.material=tqDepthMats[k]);$('m_depth').setAttribute('aria-pressed',true);$('m_plan').setAttribute('aria-pressed',false);$('rampBox').hidden=false;};
 $('ve').addEventListener('input',e=>{const nv=+e.target.value;const r=nv/VE;VE=nv;world.scale.y=VE;
   const oldT=controls.target.y; controls.target.y*=r; camera.position.y+=controls.target.y-oldT;
-  $('veV').textContent='×'+VE.toFixed(1); drawMeasure();});
+  $('veV').textContent='×'+VE.toFixed(1); drawMeasure(); queueTunnels();});
 function view(p,t){camera.position.set(...p);controls.target.set(...t);controls.update();}
 $('v_iso').onclick=()=>{ // whole map from the south-east
   const cxw=wx(G.E0+G.TW/2),czw=wz(G.N1-G.TH/2),ty=-300*VE;
@@ -531,7 +567,7 @@ function updScale(){const dist=camera.position.distanceTo(controls.target);
   $('sbar').style.width=(nice/mpp).toFixed(0)+'px'; $('slab').textContent=nice>=1000?(nice/1000)+' km':nice+' m';}
 
 // ================= WALK MODE =================
-const W={mode:'model',data:null,cur:0,yaw:0,pitch:-0.05,fov:72,anim:null,queue:[],shaft:null,mini:'near',lastPick:null};
+const W={mode:'model',data:WALK,built:false,cur:0,yaw:0,pitch:-0.05,fov:72,anim:null,queue:[],shaft:null,mini:'near',lastPick:null};
 const wscene=new THREE.Scene(); wscene.background=new THREE.Color(0x060606); wscene.fog=new THREE.FogExp2(0x060606,0.042);
 const wcam=new THREE.PerspectiveCamera(W.fov,1,0.1,500); wcam.rotation.order='YXZ';
 wscene.add(new THREE.AmbientLight(0xffffff,0.7));
@@ -556,6 +592,7 @@ const beltTex=canvasTex(128,128,(g,w,h)=>{grain(g,w,h,'#151514',2500);g.fillStyl
 const shaftTex=canvasTex(256,256,(g,w,h)=>{grain(g,w,h,'#5a554d',9000);g.fillStyle='rgba(20,18,15,.6)';for(let y=0;y<h;y+=64)g.fillRect(0,y,w,4);
   g.fillStyle='rgba(20,18,15,.35)';for(let x=0;x<w;x+=32)for(let y=0;y<h;y+=64)g.fillRect(x+((y/64)%2)*16,y,2,64);});
 const archMat=new THREE.MeshLambertMaterial({map:archTex,side:THREE.DoubleSide});
+const archRetMat=new THREE.MeshLambertMaterial({map:archTex,color:0xffb0a4,side:THREE.DoubleSide});
 const floorMat=new THREE.MeshLambertMaterial({map:floorTex,side:THREE.DoubleSide});
 const beltMat=new THREE.MeshLambertMaterial({map:beltTex,side:THREE.DoubleSide});
 const capMat=new THREE.MeshLambertMaterial({color:0x2c2a26,side:THREE.DoubleSide});
@@ -566,7 +603,7 @@ PROF.push([HW,1.6],[HW,0]);
 const PU=[0];for(let i=1;i<PROF.length;i++)PU.push(PU[i-1]+Math.hypot(PROF[i][0]-PROF[i-1][0],PROF[i][1]-PROF[i-1][1]));
 
 function buildTunnels(){
-  const D=W.data, A={p:[],u:[],i:[]}, F={p:[],u:[],i:[]}, B={p:[],u:[],i:[]}, C={p:[],i:[]};
+  const D=W.data, A0={p:[],u:[],i:[]}, AR={p:[],u:[],i:[]}, F={p:[],u:[],i:[]}, B={p:[],u:[],i:[]}, C={p:[],i:[]};
   function ribbon(T,rings,prof,uOf,vScale){ // rings: [{c:[x,y,z],s:[sx,sz],d}]
     const base=T.p.length/3, np=prof.length;
     for(const r of rings) for(let k=0;k<np;k++){const [px,py]=prof[k];
@@ -584,9 +621,9 @@ function buildTunnels(){
     const mk=(P)=>{let d=0;return P.map((c,k)=>{if(k)d+=Math.hypot(c[0]-P[k-1][0],c[1]-P[k-1][1],c[2]-P[k-1][2]);
       const a=P[Math.max(0,k-1)],b=P[Math.min(P.length-1,k+1)];let tx=b[0]-a[0],tz=b[2]-a[2];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
       return {c,s:[tz,-tx],d};});};
-    if(arch.length>1){const R=mk(arch);
+    if(arch.length>1){const R=mk(arch); const A=D.kinds[ti]==='a'?AR:A0;
       ribbon(A,R,PROF,k=>PU[k]/2.5,1);
-      ribbon(B,R,[[-2.15,0.95],[-1.05,0.95],[-1.05,0.0]],k=>k/2,2);           // belt conveyor on one side
+      if(D.kinds[ti]!=='a') ribbon(B,R,[[-2.15,0.95],[-1.05,0.95],[-1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing inbye (tunnels run outbye→inbye)
       for(const [end,flag] of [[R[0],fa],[R[R.length-1],fb]]) if(flag===2){ // dead end: close with a stopping
         const b=C.p.length/3;for(const [px,py] of PROF)C.p.push(end.c[0]+end.s[0]*px,end.c[1]+py,end.c[2]+end.s[1]*px);
         C.p.push(end.c[0],end.c[1]+1.8,end.c[2]);const ctr=b+PROF.length;for(let k=0;k<PROF.length-1;k++)C.i.push(b+k,b+k+1,ctr);}
@@ -601,7 +638,7 @@ function buildTunnels(){
     for(let k=1;k<=16;k++)C.i.push(b2,b2+k,b2+k+1);}
   const geo=(T,uv)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(T.p,3));
     if(uv)g.setAttribute('uv',new THREE.Float32BufferAttribute(T.u,2));g.setIndex(T.i);g.computeVertexNormals();return g;};
-  wscene.add(new THREE.Mesh(geo(A,true),archMat),new THREE.Mesh(geo(F,true),floorMat),new THREE.Mesh(geo(B,true),beltMat),new THREE.Mesh(geo(C,false),capMat));
+  wscene.add(new THREE.Mesh(geo(A0,true),archMat),new THREE.Mesh(geo(AR,true),archRetMat),new THREE.Mesh(geo(F,true),floorMat),new THREE.Mesh(geo(B,true),beltMat),new THREE.Mesh(geo(C,false),capMat));
   // No. 2 shaft: lined barrel from surface to just above the Threequarter inset, pit-bottom chamber below
   const s=SHAFTS[0], top=s.top, bot=-578, h=top-bot;
   const sg=new THREE.CylinderGeometry(2.745,2.745,h,40,1,true); const uv=sg.attributes.uv; for(let k=0;k<uv.count;k++){uv.setXY(k,uv.getX(k)*6,uv.getY(k)*h/3);}
@@ -616,6 +653,9 @@ function buildTunnels(){
   const cf=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.06,3.2),new THREE.MeshLambertMaterial({color:0x5a5148}));W.cage.add(cf);
   for(const sx of [-0.8,0.8])for(let k=0;k<6;k++){const bar=new THREE.Mesh(new THREE.BoxGeometry(0.04,2.2,0.04),new THREE.MeshLambertMaterial({color:0x6e665c}));bar.position.set(sx,1.1,-1.5+k*0.6);W.cage.add(bar);}
   W.cage.visible=false; wscene.add(W.cage);
+  // which stops lie in a return airway
+  const rp=[]; D.tunnels.forEach((l,ti)=>{if(D.kinds[ti]==='a') for(const q of l) rp.push(q);});
+  W.ret=D.stops.map(([E,N])=>rp.some(q=>Math.abs(q[0]-E)<6&&Math.abs(q[1]-N)<6));
 }
 
 // ---------- arrows ----------
@@ -671,7 +711,7 @@ function updWalkInfo(){
   let near='',nd=1e9; for(const [t,e,n] of DIST){const d=Math.hypot(e-E,n-N);if(d<nd){nd=d;near=t;}}
   const deg=W.data.nb[W.cur].length;
   $('wRef').textContent=sk(E,N); $('wLv').textContent=`${z.toFixed(1)} m OD`; $('wDep').textContent=`~${(GROUND-z).toFixed(0)} m`;
-  $('wGr').textContent=grad; $('wKind').textContent=deg>=3?`Junction (${deg} ways)`:deg===1?'End of roadway':(wk?'Gate road, edge of worked panel':'Roadway');
+  $('wGr').textContent=grad; $('wKind').textContent=W.ret&&W.ret[W.cur]?(deg>=3?'Return airway junction':'Return airway (No. 2 Shaft)'):deg>=3?`Junction (${deg} ways)`:deg===1?'End of roadway':(wk?'Gate road, edge of worked panel':'Roadway');
   $('wNear').textContent=near.replace(/ ·.*/,'');
   if(performance.now()-flashT>2500) $('ro').textContent=`${sk(E,N)} · floor ${z.toFixed(1)} m OD · heading ${(((W.yaw*180/Math.PI)%360+360)%360).toFixed(0)}° · ${grad}`;
 }
@@ -746,8 +786,8 @@ $('wCage').onclick=rideCage;
 
 // ---------- mode switching ----------
 async function enterWalk(at){
-  if(!W.data){$('loading').hidden=false;$('loading').textContent='Building roadways…';
-    W.data=await fetch('walk.json').then(r=>r.json()); buildTunnels(); buildNetCanvas();
+  if(!W.built){W.built=true;$('loading').hidden=false;$('loading').textContent='Building roadways…';
+    await new Promise(r=>setTimeout(r,30)); buildTunnels(); buildNetCanvas();
     for(const [t,E,N] of DIST){const b=document.createElement('button');b.innerHTML=`<span>${t}</span><span>${zAt(E,N).toFixed(0)} m</span>`;
       b.onclick=()=>{let best=0,bd=1e18;W.data.stops.forEach((s,k)=>{const d=(s[0]-E)**2+(s[1]-N)**2;if(d<bd){bd=d;best=k;}});teleport(best);};$('wdist').appendChild(b);}
     $('loading').hidden=true;}

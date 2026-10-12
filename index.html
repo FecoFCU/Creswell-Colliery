@@ -57,6 +57,16 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .compass{position:absolute;right:16px;top:calc(12px + env(safe-area-inset-top,0px));width:54px;height:54px;border-radius:50%;background:var(--panel);border:1px solid var(--rule);z-index:5}
 .compass svg{width:100%;height:100%}
 .stack{display:flex;flex-direction:column;gap:14px}
+.nav{position:absolute;right:16px;top:calc(76px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;align-items:center;gap:6px;z-index:5;
+  background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:8px}
+.nb{width:38px;height:38px;border-radius:6px;border:1px solid var(--rule);background:var(--chip);color:var(--ink);font:600 18px var(--body);cursor:pointer;display:grid;place-items:center;padding:0;touch-action:manipulation}
+.nb:hover{border-color:var(--accent)}
+.nb:active{background:var(--accent);color:var(--accent-ink)}
+#n_zoom{writing-mode:vertical-lr;direction:rtl;width:24px;height:110px;margin:2px 0}
+.pad{display:grid;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(3,38px);gap:3px;margin-top:4px}
+.pad #n_up{grid-column:2;grid-row:1}.pad #n_left{grid-column:1;grid-row:2}.pad #n_home{grid-column:2;grid-row:2}.pad #n_right{grid-column:3;grid-row:2}.pad #n_down{grid-column:2;grid-row:3}
+.row2{display:flex;gap:4px}
+@media (max-width:700px){.nav{top:auto;bottom:calc(60px + env(safe-area-inset-bottom,0px));padding:6px}.nav .pad,#n_zoom{display:none}}
 .modes button{flex:1;padding:7px 8px;font-size:13px}
 .miniWrap{position:absolute;right:16px;bottom:calc(56px + env(safe-area-inset-bottom,0px));width:min(260px,40vw);display:flex;flex-direction:column;gap:6px;z-index:5}
 .miniWrap canvas{width:100%;aspect-ratio:1/1.15;border:1px solid var(--rule);border-radius:6px;cursor:crosshair;display:block}
@@ -93,6 +103,26 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 <body>
 <div id="stage">
 <div class="compass" title="North"><svg viewBox="-27 -27 54 54"><g id="needle"><path d="M0,-19 L6,4 L0,0 L-6,4Z" fill="var(--accent)"/><path d="M0,19 L6,4 L0,0 L-6,4Z" fill="var(--muted)" opacity=".5"/><text x="0" y="-8" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="var(--ink)" transform="translate(0,-14)">N</text></g></svg></div>
+<div class="nav" id="nav" role="group" aria-label="Map controls">
+  <button class="nb" id="n_in" title="Zoom in (+)" aria-label="Zoom in">+</button>
+  <input type="range" id="n_zoom" min="0" max="100" step="0.5" value="20" aria-label="Zoom" orient="vertical">
+  <button class="nb" id="n_out" title="Zoom out (−)" aria-label="Zoom out">−</button>
+  <div class="pad">
+    <button class="nb" id="n_up" title="Move forward (↑)" aria-label="Move forward">▲</button>
+    <button class="nb" id="n_left" title="Pan left (←)" aria-label="Pan left">◀</button>
+    <button class="nb" id="n_home" title="Whole mine" aria-label="Whole mine">⌂</button>
+    <button class="nb" id="n_right" title="Pan right (→)" aria-label="Pan right">▶</button>
+    <button class="nb" id="n_down" title="Move back (↓)" aria-label="Move back">▼</button>
+  </div>
+  <div class="row2">
+    <button class="nb" id="n_rl" title="Turn left (Q)" aria-label="Turn left">↺</button>
+    <button class="nb" id="n_rr" title="Turn right (E)" aria-label="Turn right">↻</button>
+  </div>
+  <div class="row2">
+    <button class="nb" id="n_tu" title="Look more from above (W)" aria-label="Tilt to plan">⤒</button>
+    <button class="nb" id="n_td" title="Look more from the side (S)" aria-label="Tilt to side">⤓</button>
+  </div>
+</div>
 <div class="scale" aria-hidden="true"><div class="bar" id="sbar"></div><span id="slab"></span></div>
 <div class="miniWrap" id="miniWrap" hidden><canvas id="mini" aria-label="Mini-map: click to jump"></canvas><button class="btn" id="miniZoom">Whole mine</button></div>
 <div class="readout" id="ro">Point at the Threequarter seam for grid reference and level</div>
@@ -239,7 +269,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       <button class="btn" id="v_plan">Plan</button>
       <button class="btn" id="v_shaft">Pit bottom</button>
     </div>
-    <div class="note">Drag to rotate. Right-drag or Shift-drag to pan. Scroll or pinch to zoom towards the cursor. Double-click the seam to centre on it.</div>
+    <div class="note">Use the buttons and zoom slider at the top right, or drag to rotate, right-drag to pan, and scroll or pinch to zoom. Double-click the seam to fly in. Keys: arrows pan, + and − zoom, Q/E turn, W/S tilt.</div>
   </div>
 
   </div>
@@ -279,7 +309,8 @@ stage.prepend(renderer.domElement);
 const scene=new THREE.Scene();
 const camera=new THREE.PerspectiveCamera(38,1,5,60000);
 const controls=new OrbitControls(camera,renderer.domElement);
-controls.enableDamping=true; controls.maxPolarAngle=Math.PI*0.495; controls.zoomToCursor=true; controls.screenSpacePanning=true; controls.minDistance=40;
+controls.enableDamping=true; controls.dampingFactor=0.14; controls.zoomSpeed=1.8; controls.rotateSpeed=0.7; controls.panSpeed=1.2; controls.maxPolarAngle=Math.PI*0.495; controls.zoomToCursor=true; controls.screenSpacePanning=true; controls.minDistance=40; controls.maxDistance=30000;
+controls.addEventListener('start',()=>{NAV=null;});
 scene.add(new THREE.HemisphereLight(0xffffff,0x555a60,1.6));
 const sun=new THREE.DirectionalLight(0xffffff,1.4); sun.position.set(-3000,6000,2500); scene.add(sun);
 const world=new THREE.Group(); scene.add(world);   // y = level m OD, scaled by VE
@@ -497,7 +528,20 @@ $('m_depth').onclick=()=>{tqMeshes.forEach((m,k)=>m.material=tqDepthMats[k]);$('
 $('ve').addEventListener('input',e=>{const nv=+e.target.value;const r=nv/VE;VE=nv;world.scale.y=VE;
   const oldT=controls.target.y; controls.target.y*=r; camera.position.y+=controls.target.y-oldT;
   $('veV').textContent='×'+VE.toFixed(1); drawMeasure(); queueTunnels();});
-function view(p,t){camera.position.set(...p);controls.target.set(...t);controls.update();}
+let NAV=null;
+function tween(p,t,ms=550){NAV={p0:camera.position.clone(),t0:controls.target.clone(),p1:new THREE.Vector3(...p),t1:new THREE.Vector3(...t),t:0,ms};}
+function view(p,t,instant){if(instant){NAV=null;camera.position.set(...p);controls.target.set(...t);controls.update();}else tween(p,t);}
+function stepNav(dt){if(!NAV)return;NAV.t+=dt;const u=Math.min(1,NAV.t/NAV.ms),e=1-Math.pow(1-u,3);
+  camera.position.lerpVectors(NAV.p0,NAV.p1,e);controls.target.lerpVectors(NAV.t0,NAV.t1,e);if(u>=1)NAV=null;}
+// nav actions
+const navOff=()=>camera.position.clone().sub(controls.target);
+function zoomBy(f){const o=navOff();const d=Math.min(30000,Math.max(60,o.length()*f));o.setLength(d);const t=controls.target.clone();tween(t.clone().add(o).toArray(),t.toArray(),380);}
+function turn(a){const o=navOff().applyAxisAngle(new THREE.Vector3(0,1,0),a);const t=controls.target;tween(t.clone().add(o).toArray(),t.toArray(),420);}
+function tilt(da){const o=navOff();const sp=new THREE.Spherical().setFromVector3(o);sp.phi=Math.min(Math.PI*0.49,Math.max(0.02,sp.phi+da));o.setFromSpherical(sp);const t=controls.target;tween(t.clone().add(o).toArray(),t.toArray(),420);}
+function pan(dx,dz){const o=navOff();const d=o.length()*0.35;const yaw=Math.atan2(o.x,o.z);
+  const fw=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)),rt=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+  const mv=rt.multiplyScalar(dx*d).add(fw.multiplyScalar(dz*d));tween(camera.position.clone().add(mv).toArray(),controls.target.clone().add(mv).toArray(),380);}
+const ZMIN=Math.log(60),ZMAX=Math.log(30000);
 $('v_iso').onclick=()=>{ // whole map from the south-east
   const cxw=wx(G.E0+G.TW/2),czw=wz(G.N1-G.TH/2),ty=-300*VE;
   const r=Math.hypot(G.TW,G.TH)/2, t=Math.sin(THREE.MathUtils.degToRad(camera.fov/2));
@@ -509,6 +553,18 @@ function fitPlan(){const t=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
   view([cxw,GROUND*VE+h,czw+1],[cxw,GROUND*VE,czw]);}
 $('v_plan').onclick=fitPlan;
 function flyTo(E,N,lv){view([wx(E)+900,lv*VE+900,wz(N)+900],[wx(E),lv*VE,wz(N)]);}
+$('n_in').onclick=()=>zoomBy(0.5); $('n_out').onclick=()=>zoomBy(2);
+$('n_rl').onclick=()=>turn(Math.PI/8); $('n_rr').onclick=()=>turn(-Math.PI/8);
+$('n_tu').onclick=()=>tilt(-0.18); $('n_td').onclick=()=>tilt(0.18);
+$('n_up').onclick=()=>pan(0,1); $('n_down').onclick=()=>pan(0,-1); $('n_left').onclick=()=>pan(-1,0); $('n_right').onclick=()=>pan(1,0);
+$('n_home').onclick=()=>$('v_iso').onclick();
+let zDrag=false;
+$('n_zoom').addEventListener('pointerdown',()=>zDrag=true); addEventListener('pointerup',()=>zDrag=false);
+$('n_zoom').addEventListener('input',e=>{NAV=null;const d=Math.exp(ZMAX-(+e.target.value)/100*(ZMAX-ZMIN));const o=navOff().setLength(d);camera.position.copy(controls.target).add(o);});
+addEventListener('keydown',e=>{if(W.mode==='walk'||e.target.closest('input,textarea,button'))return;const k=e.key;
+  const act={'+':()=>zoomBy(0.6),'=':()=>zoomBy(0.6),'-':()=>zoomBy(1.6),'_':()=>zoomBy(1.6),ArrowUp:()=>pan(0,.5),ArrowDown:()=>pan(0,-.5),ArrowLeft:()=>pan(-.5,0),ArrowRight:()=>pan(.5,0),
+    q:()=>turn(Math.PI/12),e:()=>turn(-Math.PI/12),w:()=>tilt(-0.12),s:()=>tilt(0.12)}[k.length===1?k.toLowerCase():k];
+  if(act){act();e.preventDefault();}});
 $('v_shaft').onclick=()=>view([wx(s2.E)+700,-380*VE,wz(s2.N)+650],[wx(s2.E)-50,-583*VE,wz(s2.N)-50]);
 $('tgl').onclick=()=>{const p=$('panel');const open=p.classList.toggle('closed')===false;$('tgl').setAttribute('aria-expanded',open);};
 if(innerWidth>700) $('panel').classList.remove('closed');
@@ -554,7 +610,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
   else $('ro').textContent=info(q);
 });
 renderer.domElement.addEventListener('dblclick',e=>{if(W.mode==='walk')return; const q=pick(e); if(!q) return;
-  const d=camera.position.clone().sub(controls.target); controls.target.set(wx(q.E),q.lv*VE,wz(q.N)); camera.position.copy(controls.target).add(d);});
+  const o=navOff(); o.setLength(Math.max(150,o.length()*0.4)); const t=new THREE.Vector3(wx(q.E),q.lv*VE,wz(q.N)); tween(t.clone().add(o).toArray(),t.toArray(),650);});
 $('goForm').addEventListener('submit',e=>{e.preventDefault();
   const t=$('goRef').value.toUpperCase().replace(/^\s*SK/,'').replace(/[^0-9]/g,' ').trim().split(/\s+/);
   let E,N; if(t.length===2&&t[0].length===t[1].length&&t[0].length>=3&&t[0].length<=5){const f=10**(5-t[0].length);E=400000+(+t[0])*f;N=300000+(+t[1])*f;}
@@ -800,13 +856,13 @@ async function enterWalk(at){
     for(const [t,E,N,L] of DIST){const lv=L??zAt(E,N);const b=document.createElement('button');b.innerHTML=`<span>${t}</span><span>${lv.toFixed(0)} m</span>`;
       b.onclick=()=>{let best=0,bd=1e18;W.data.stops.forEach((s,k)=>{const d=(s[0]-E)**2+(s[1]-N)**2+(s[2]-lv)**2;if(d<bd){bd=d;best=k;}});teleport(best);};$('wdist').appendChild(b);}
     $('loading').hidden=true;}
-  W.mode='walk'; controls.enabled=false; $('modelUI').hidden=true; $('walkUI').hidden=false; $('miniWrap').hidden=false; document.querySelector('.scale').hidden=true;
+  W.mode='walk'; controls.enabled=false; $('nav').hidden=true; $('modelUI').hidden=true; $('walkUI').hidden=false; $('miniWrap').hidden=false; document.querySelector('.scale').hidden=true;
   $('mode3d').setAttribute('aria-pressed',false); $('modeWalk').setAttribute('aria-pressed',true); renderer.domElement.style.cursor='grab';
   let k=W.data.pit; if(at){let bd=1e18;W.data.stops.forEach((s,i)=>{const d=(s[0]-at.E)**2+(s[1]-at.N)**2;if(d<bd){bd=d;k=i;}});}
   resize(); teleport(k);
 }
 function exitWalk(){
-  W.mode='model'; W.shaft=null; W.anim=null; W.queue=[]; controls.enabled=true; $('modelUI').hidden=false; $('walkUI').hidden=true; $('miniWrap').hidden=true; document.querySelector('.scale').hidden=false;
+  W.mode='model'; $('nav').hidden=false; W.shaft=null; W.anim=null; W.queue=[]; controls.enabled=true; $('modelUI').hidden=false; $('walkUI').hidden=true; $('miniWrap').hidden=true; document.querySelector('.scale').hidden=false;
   $('mode3d').setAttribute('aria-pressed',true); $('modeWalk').setAttribute('aria-pressed',false); renderer.domElement.style.cursor='';
   if(W.data){const s=W.data.stops[W.cur]; flyTo(s[0],s[1],s[2]); mPts=[{E:s[0],N:s[1],lv:s[2]}]; drawMeasure();}
 }
@@ -827,7 +883,7 @@ addEventListener('resize',resize); resize();
 setTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{setTheme();applyCut();});
 new MutationObserver(()=>{setTheme();applyCut();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-applyCut(); fitPlan(); $('v_iso').onclick();
+applyCut(); fitPlan(); $('v_iso').onclick(); if(NAV){camera.position.copy(NAV.p1);controls.target.copy(NAV.t1);NAV=null;}
 $('loading').hidden=true;
 const needle=$('needle');
 let lastT=performance.now();
@@ -835,7 +891,8 @@ renderer.setAnimationLoop(()=>{const now=performance.now(),dt=Math.min(100,now-l
   if(W.mode==='walk'){updWalk(dt); drawMini();
     needle.setAttribute('transform',`rotate(${(-W.yaw*180/Math.PI).toFixed(1)})`);
     renderer.render(wscene,wcam); return;}
-  controls.update();
+  stepNav(dt); controls.update();
+  if(!zDrag){const d=camera.position.distanceTo(controls.target);$('n_zoom').value=((ZMAX-Math.log(d))/(ZMAX-ZMIN)*100).toFixed(1);}
   const az=Math.atan2(camera.position.x-controls.target.x,camera.position.z-controls.target.z);
   needle.setAttribute('transform',`rotate(${(az*180/Math.PI).toFixed(1)})`);
   updScale(); renderer.render(scene,camera);});

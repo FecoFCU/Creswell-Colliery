@@ -153,6 +153,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="row"><label><input type="checkbox" id="L_road" checked><span class="sw" style="background:#e4ebef;border:1px solid var(--rule)"></span>Roadways (tunnels)</label></div>
     <div class="row"><label><input type="checkbox" id="L_face" checked><span class="sw" style="background:#ffc400"></span>Faces (panel ends)</label></div>
     <div class="row"><label><input type="checkbox" id="L_ret" checked><span class="sw" style="background:#d7263d"></span>Return airways, No.&nbsp;2 Shaft</label></div>
+    <div class="row"><label><input type="checkbox" id="L_drift" checked><span class="sw" style="background:#ff8c1a"></span>Drifts to Top Hard &amp; High Hazel</label></div>
     <div class="kv"><span>Tunnel size on screen</span><b id="tunV">14 m</b></div>
     <input type="range" id="tunW" min="4" max="40" step="1" value="14" aria-label="Tunnel size">
     <div class="note">Levels are the No.&nbsp;2 shaft insets. Clowne, High Hazel and Top Hard are projected parallel to the Threequarter floor from those insets, as a guide until their own plans are added. Roadways are traced from the plans; faces are picked out automatically as the short cross-panel roads at panel ends, so a few may be missed or mislabelled. Tunnels are drawn wider than their real 4.9&nbsp;m so they show at mine scale.</div>
@@ -381,14 +382,17 @@ const gridGroup=new THREE.Group(); world.add(gridGroup);
 const roadMat=new THREE.MeshLambertMaterial({color:0xe4ebef,emissive:0x1d2a33});
 const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0x4a3300});
 const retMat=new THREE.MeshLambertMaterial({color:0xd7263d,emissive:0x3a0710});
+const driftMat=new THREE.MeshLambertMaterial({color:0xff8c1a,emissive:0x3d1e00});
+const hhMat=new THREE.MeshLambertMaterial({color:0xe2c159,emissive:0x3a2e08});
+const thMat=new THREE.MeshLambertMaterial({color:0x4fae7b,emissive:0x0d2a1a});
 const tunGroup=new THREE.Group(); scene.add(tunGroup);   // in scene units: y already multiplied by VE
 let tunPending=false;
 function buildModelTunnels(){
   tunPending=false; tunGroup.children.forEach(m=>m.geometry.dispose()); tunGroup.clear();
   const r=+$('tunW').value/2, SEG=8;
-  const acc={r:{p:[],i:[]},f:{p:[],i:[]},a:{p:[],i:[]}};
+  const acc={r:{p:[],i:[]},f:{p:[],i:[]},a:{p:[],i:[]},d:{p:[],i:[]},h:{p:[],i:[]},t:{p:[],i:[]}};
   WALK.tunnels.forEach((line,ti)=>{
-    const kd=WALK.kinds[ti], A=acc[kd==='f'||kd==='a'?kd:'r'];
+    const kd=WALK.kinds[ti], A=acc[acc[kd]?kd:'r'];
     const pts=line.filter((_,k)=>k%2===0||k===line.length-1).map(([E,N,z])=>[wx(E),z*VE+r*0.55,wz(N)]);
     if(pts.length<2) return; const base=A.p.length/3;
     pts.forEach((c,k)=>{const a=pts[Math.max(0,k-1)],b=pts[Math.min(pts.length-1,k+1)];
@@ -396,9 +400,9 @@ function buildModelTunnels(){
       for(let j=0;j<SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);}});
     for(let k=0;k<pts.length-1;k++)for(let j=0;j<SEG;j++){const a=base+k*SEG+j,b=base+k*SEG+(j+1)%SEG,c=a+SEG,d=b+SEG;A.i.push(a,c,b,b,c,d);}
   });
-  for(const [key,mat] of [['r',roadMat],['f',faceMat],['a',retMat]]){const g=new THREE.BufferGeometry();
+  for(const [key,mat] of [['r',roadMat],['f',faceMat],['a',retMat],['d',driftMat],['h',hhMat],['t',thMat]]){const g=new THREE.BufferGeometry();
     g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setIndex(acc[key].i);g.computeVertexNormals();
-    const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',f:'L_face',a:'L_ret'}[key]).checked;tunGroup.add(m);}
+    const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',f:'L_face',a:'L_ret',d:'L_drift',h:'L_drift',t:'L_drift'}[key]).checked;tunGroup.add(m);}
 }
 function queueTunnels(){if(!tunPending){tunPending=true;requestAnimationFrame(buildModelTunnels);}}
 buildModelTunnels();
@@ -406,6 +410,7 @@ $('tunW').addEventListener('input',e=>{$('tunV').textContent=e.target.value+' m'
 $('L_road').addEventListener('change',e=>{const m=tunGroup.getObjectByName('r');if(m)m.visible=e.target.checked;});
 $('L_face').addEventListener('change',e=>{const m=tunGroup.getObjectByName('f');if(m)m.visible=e.target.checked;});
 $('L_ret').addEventListener('change',e=>{const m=tunGroup.getObjectByName('a');if(m)m.visible=e.target.checked;});
+$('L_drift').addEventListener('change',e=>{for(const k of ['d','h','t']){const m=tunGroup.getObjectByName(k);if(m)m.visible=e.target.checked;}});
 
 // ---------- section faces ----------
 const BAND=['#a99a7f','#8c8f86','#7f8a8c','#6f7378','#5b5e63'];
@@ -457,8 +462,8 @@ for(const s of SHAFTS){
 }
 const s2=SHAFTS[0], s1=SHAFTS[1];
 // districts: listed in the sidebar instead of labelled on the map
-const DIST=[['No. 2 Shaft · pit bottom',452302,373604],['P panels (NW)',450700,376800],['Panels 1–10',451100,374500],['Panels 20–41 (SW)',450100,371300],['Downthrown block (N)',451900,377750],['Panel 17 (SE)',453700,372700]];
-for(const [t,E,N] of DIST){const lv=zAt(E,N);const b=document.createElement('button');
+const DIST=[['No. 2 Shaft · pit bottom',452302,373604],['High Hazel landing (drift top)',452219,373757,-205.6],['P panels (NW)',450700,376800],['Panels 1–10',451100,374500],['Panels 20–41 (SW)',450100,371300],['Downthrown block (N)',451900,377750],['Panel 17 (SE)',453700,372700]];
+for(const [t,E,N,L] of DIST){const lv=L??zAt(E,N);const b=document.createElement('button');
   b.innerHTML=`<span>${t}</span><span>${lv.toFixed(0)} m</span>`;
   b.onclick=()=>flyTo(E,N,lv);$('dist').appendChild(b);}
 // ---------- cut logic ----------
@@ -476,7 +481,7 @@ function applyCut(){
   else if(cutMode==='ns'){clipPlanes=[planeE];clipInter=false; cutGroup.add(new THREE.Mesh(sectionGeom(Ecut,G.N0,Ecut,G.N1),cutMat));}
   else {clipPlanes=[];}
   $('eCut').disabled=cutMode==='ew'||cutMode==='none'; $('nCut').disabled=cutMode==='ns'||cutMode==='none';
-  const tqm=[...tqPlanMats,...tqDepthMats,roadMat,faceMat,retMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
+  const tqm=[...tqPlanMats,...tqDepthMats,roadMat,faceMat,retMat,driftMat,hhMat,thMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
   for(const m of mats){m.clippingPlanes=clipPlanes;m.clipIntersection=clipInter;m.needsUpdate=true;}
 }
 document.querySelectorAll('[data-cut]').forEach(b=>b.onclick=()=>{cutMode=b.dataset.cut;
@@ -654,8 +659,11 @@ function buildTunnels(){
   for(const sx of [-0.8,0.8])for(let k=0;k<6;k++){const bar=new THREE.Mesh(new THREE.BoxGeometry(0.04,2.2,0.04),new THREE.MeshLambertMaterial({color:0x6e665c}));bar.position.set(sx,1.1,-1.5+k*0.6);W.cage.add(bar);}
   W.cage.visible=false; wscene.add(W.cage);
   // which stops lie in a return airway
-  const rp=[]; D.tunnels.forEach((l,ti)=>{if(D.kinds[ti]==='a') for(const q of l) rp.push(q);});
-  W.ret=D.stops.map(([E,N])=>rp.some(q=>Math.abs(q[0]-E)<6&&Math.abs(q[1]-N)<6));
+  const H=new Map(), hk=(E,N)=>Math.round(E/10)+','+Math.round(N/10);
+  D.tunnels.forEach((l,ti)=>{const k=D.kinds[ti]; if(k==='r') return; for(const q of l){const h=hk(q[0],q[1]); if(!H.has(h))H.set(h,[]); H.get(h).push([q,k]);}});
+  W.kind=D.stops.map(([E,N,z])=>{for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){const L=H.get((Math.round(E/10)+dx)+','+(Math.round(N/10)+dy));
+      if(L) for(const [q,k] of L) if(Math.abs(q[0]-E)<6&&Math.abs(q[1]-N)<6&&Math.abs(q[2]-z)<4) return k;} return 'r';});
+  W.ret=W.kind.map(k=>k==='a');
 }
 
 // ---------- arrows ----------
@@ -711,7 +719,8 @@ function updWalkInfo(){
   let near='',nd=1e9; for(const [t,e,n] of DIST){const d=Math.hypot(e-E,n-N);if(d<nd){nd=d;near=t;}}
   const deg=W.data.nb[W.cur].length;
   $('wRef').textContent=sk(E,N); $('wLv').textContent=`${z.toFixed(1)} m OD`; $('wDep').textContent=`~${(GROUND-z).toFixed(0)} m`;
-  $('wGr').textContent=grad; $('wKind').textContent=W.ret&&W.ret[W.cur]?(deg>=3?'Return airway junction':'Return airway (No. 2 Shaft)'):deg>=3?`Junction (${deg} ways)`:deg===1?'End of roadway':(wk?'Gate road, edge of worked panel':'Roadway');
+  $('wGr').textContent=grad; const KN={a:'Return airway (No. 2 Shaft)',d:'Drift between seams',h:'High Hazel seam roadway',t:'Top Hard level roadway',f:'Face line (panel end)'};
+  $('wKind').textContent=W.kind&&KN[W.kind[W.cur]]?KN[W.kind[W.cur]]+(deg>=3?' · junction':''):deg>=3?`Junction (${deg} ways)`:deg===1?'End of roadway':(wk?'Gate road, edge of worked panel':'Roadway');
   $('wNear').textContent=near.replace(/ ·.*/,'');
   if(performance.now()-flashT>2500) $('ro').textContent=`${sk(E,N)} · floor ${z.toFixed(1)} m OD · heading ${(((W.yaw*180/Math.PI)%360+360)%360).toFixed(0)}° · ${grad}`;
 }
@@ -788,8 +797,8 @@ $('wCage').onclick=rideCage;
 async function enterWalk(at){
   if(!W.built){W.built=true;$('loading').hidden=false;$('loading').textContent='Building roadways…';
     await new Promise(r=>setTimeout(r,30)); buildTunnels(); buildNetCanvas();
-    for(const [t,E,N] of DIST){const b=document.createElement('button');b.innerHTML=`<span>${t}</span><span>${zAt(E,N).toFixed(0)} m</span>`;
-      b.onclick=()=>{let best=0,bd=1e18;W.data.stops.forEach((s,k)=>{const d=(s[0]-E)**2+(s[1]-N)**2;if(d<bd){bd=d;best=k;}});teleport(best);};$('wdist').appendChild(b);}
+    for(const [t,E,N,L] of DIST){const lv=L??zAt(E,N);const b=document.createElement('button');b.innerHTML=`<span>${t}</span><span>${lv.toFixed(0)} m</span>`;
+      b.onclick=()=>{let best=0,bd=1e18;W.data.stops.forEach((s,k)=>{const d=(s[0]-E)**2+(s[1]-N)**2+(s[2]-lv)**2;if(d<bd){bd=d;best=k;}});teleport(best);};$('wdist').appendChild(b);}
     $('loading').hidden=true;}
   W.mode='walk'; controls.enabled=false; $('modelUI').hidden=true; $('walkUI').hidden=false; $('miniWrap').hidden=false; document.querySelector('.scale').hidden=true;
   $('mode3d').setAttribute('aria-pressed',false); $('modeWalk').setAttribute('aria-pressed',true); renderer.domElement.style.cursor='grab';

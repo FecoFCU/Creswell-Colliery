@@ -137,7 +137,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       <div class="dist" id="wdist"></div>
     </div>
     <div class="sec note">
-      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Conveyors are shown on the right-hand side facing inbye, in all roadways except the return airways; which other roads were intakes or returns is not yet mapped. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
+      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Conveyors are shown on the right-hand side facing outbye, in all roadways except the return airways; which other roads were intakes or returns is not yet mapped. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
       <button class="btn" id="wModel" style="margin-top:8px">Show this spot in the 3D model</button>
     </div>
   </div>
@@ -623,7 +623,7 @@ function buildTunnels(){
       return {c,s:[tz,-tx],d};});};
     if(arch.length>1){const R=mk(arch); const A=D.kinds[ti]==='a'?AR:A0;
       ribbon(A,R,PROF,k=>PU[k]/2.5,1);
-      if(D.kinds[ti]!=='a') ribbon(B,R,[[-2.15,0.95],[-1.05,0.95],[-1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing inbye (tunnels run outbye→inbye)
+      if(D.kinds[ti]!=='a') ribbon(B,R,[[2.15,0.95],[1.05,0.95],[1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing outbye (tunnels run outbye→inbye)
       for(const [end,flag] of [[R[0],fa],[R[R.length-1],fb]]) if(flag===2){ // dead end: close with a stopping
         const b=C.p.length/3;for(const [px,py] of PROF)C.p.push(end.c[0]+end.s[0]*px,end.c[1]+py,end.c[2]+end.s[1]*px);
         C.p.push(end.c[0],end.c[1]+1.8,end.c[2]);const ctr=b+PROF.length;for(let k=0;k<PROF.length-1;k++)C.i.push(b+k,b+k+1,ctr);}

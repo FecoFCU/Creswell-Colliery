@@ -231,12 +231,14 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 
   <div class="sec">
     <h2>Show</h2>
-    <div class="row"><label><input type="checkbox" id="L_ground" checked>Surface (OS base)</label></div>
+    <div class="row"><label><input type="checkbox" id="L_ground">Surface map (OS base)</label></div>
     <div class="row"><label><input type="checkbox" id="L_grid" checked>1&nbsp;km National Grid</label></div>
     <div class="row"><input type="range" id="gOp" min="0" max="1" step="0.05" value="0.3" aria-label="Surface opacity"></div>
     <div class="row"><label><input type="checkbox" id="L_shaft" checked>Shafts &amp; insets</label></div>
+    <div class="row"><label><input type="checkbox" id="L_plan" checked>Plan linework &amp; levels</label></div>
+    <div class="row"><input type="range" id="pOp" min="0.1" max="1" step="0.05" value="0.8" aria-label="Plan linework opacity"></div>
     <div class="seg" role="group" aria-label="Threequarter colouring">
-      <button id="m_plan" aria-pressed="true">Plan overlay</button>
+      <button id="m_plan" aria-pressed="true">Coal &amp; goaf</button>
       <button id="m_depth" aria-pressed="false">Colour by depth</button>
     </div>
     <div id="rampBox" hidden>
@@ -274,7 +276,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 
   </div>
   <div class="sec note">
-    Clowne, High Hazel and Top Hard layers are off by default; tick them under Seams. Source: BCC abandonment plans EM1404, sheets SK4870–5471. 621 floor levels read off the plans; the surface fits them to a median 0.4&nbsp;m. Sheets SK5270–5272 were not in the set, so workings stop at their edge. Shaft drawn ×5 wider than its 5.49&nbsp;m diameter.
+    Clowne, High Hazel and Top Hard layers and the surface map are off by default; tick them under Seams. Source: BCC abandonment plans EM1404, sheets SK4870–5471. 621 floor levels read off the plans; the surface fits them to a median 0.4&nbsp;m. Sheets SK5270–5272 were not in the set, so workings stop at their edge. Shaft drawn ×5 wider than its 5.49&nbsp;m diameter.
   </div>
 </aside>
 
@@ -329,12 +331,12 @@ const [WALK,zbuf,groundTex,alphaImg,...tileTex]=await Promise.all([
   fetch('z.json').then(r=>r.json()).then(j=>Uint8Array.from(atob(j.b64),c=>c.charCodeAt(0)).buffer),
   TL.loadAsync('ground.jpg'),
   new Promise(res=>{const i=new Image();i.onload=()=>res(i);i.src='seam_alpha.png'}),
-  ...TILES.flatMap(([j,i])=>[TL.loadAsync(`seam_${j}${i}.jpg`),TL.loadAsync(`alpha_${j}${i}.png`)])
+  ...TILES.flatMap(([j,i])=>[TL.loadAsync(`base_${j}${i}.jpg`),TL.loadAsync(`alpha_${j}${i}.png`),TL.loadAsync(`plan_${j}${i}.jpg`),TL.loadAsync(`ink_${j}${i}.png`)])
 ]);
 groundTex.colorSpace=THREE.SRGBColorSpace;
 const maxAn=renderer.capabilities.getMaxAnisotropy();
 groundTex.anisotropy=maxAn;
-tileTex.forEach((t,k)=>{t.anisotropy=maxAn; if(k%2===0) t.colorSpace=THREE.SRGBColorSpace;});
+tileTex.forEach((t,k)=>{t.anisotropy=maxAn; if(k%4===0||k%4===2) t.colorSpace=THREE.SRGBColorSpace;});
 const raw=new Int16Array(zbuf); const Z=new Float32Array(raw.length); for(let i=0;i<raw.length;i++) Z[i]=-raw[i]/10;
 const cv=document.createElement('canvas'); cv.width=alphaImg.width; cv.height=alphaImg.height;
 const cx=cv.getContext('2d',{willReadFrequently:true}); cx.drawImage(alphaImg,0,0);
@@ -375,12 +377,15 @@ function boxGeom(Ea,Eb,Na,Nb,off,skipAbove,withColor){
 }
 // Threequarter: four high-detail tiles
 const tq=new THREE.Group(); world.add(tq);
-const tqPlanMats=[],tqDepthMats=[],tqMeshes=[];
+const tqPlanMats=[],tqDepthMats=[],tqMeshes=[],planMats=[],planMeshes=[];
 TILES.forEach(([j,i,Ea,Eb,Nt,Nb],k)=>{
   const g=boxGeom(Ea,Eb,Nb,Nt,0,false,true);
-  const pm=new THREE.MeshLambertMaterial({map:tileTex[k*2],alphaMap:tileTex[k*2+1],transparent:true,side:THREE.DoubleSide,alphaTest:0.02});
-  const dm=new THREE.MeshLambertMaterial({vertexColors:true,alphaMap:tileTex[k*2+1],transparent:true,side:THREE.DoubleSide,alphaTest:0.02});
+  const pm=new THREE.MeshLambertMaterial({map:tileTex[k*4],alphaMap:tileTex[k*4+1],transparent:true,side:THREE.DoubleSide,alphaTest:0.02});
+  const dm=new THREE.MeshLambertMaterial({vertexColors:true,alphaMap:tileTex[k*4+1],transparent:true,side:THREE.DoubleSide,alphaTest:0.02});
   const m=new THREE.Mesh(g,pm);m.renderOrder=0;tq.add(m);tqPlanMats.push(pm);tqDepthMats.push(dm);tqMeshes.push(m);
+  // plan linework layer: original plan colours, paper removed
+  const lm=new THREE.MeshBasicMaterial({map:tileTex[k*4+2],alphaMap:tileTex[k*4+3],transparent:true,opacity:0.8,depthWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+  const lmesh=new THREE.Mesh(g,lm);lmesh.renderOrder=1;tq.add(lmesh);planMats.push(lm);planMeshes.push(lmesh);
 });
 const tqMesh=tq; // layer toggle target
 
@@ -394,7 +399,7 @@ for(const k of ['cl','hh','th']){
 // ground
 const gGeom=new THREE.PlaneGeometry(G.TW,G.TH); gGeom.rotateX(-Math.PI/2);
 const gMat=clipMat(new THREE.MeshLambertMaterial({map:groundTex,transparent:true,opacity:.3,depthWrite:false,side:THREE.DoubleSide}));
-const ground=new THREE.Mesh(gGeom,gMat);
+const ground=new THREE.Mesh(gGeom,gMat); ground.visible=false;
 ground.position.set(wx(G.E0+G.TW/2),GROUND,wz(G.N1-G.TH/2)); ground.renderOrder=3; world.add(ground);
 
 // 1 km National Grid lines draped on the seam (and ticked at the surface)
@@ -410,29 +415,40 @@ const gridGroup=new THREE.Group(); world.add(gridGroup);
 }
 
 // ---------- roadways & faces as tunnels on the seam ----------
-const roadMat=new THREE.MeshLambertMaterial({color:0xe4ebef,emissive:0x1d2a33});
-const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0x4a3300});
-const retMat=new THREE.MeshLambertMaterial({color:0xd7263d,emissive:0x3a0710});
-const driftMat=new THREE.MeshLambertMaterial({color:0xff8c1a,emissive:0x3d1e00});
-const hhMat=new THREE.MeshLambertMaterial({color:0xe2c159,emissive:0x3a2e08});
-const thMat=new THREE.MeshLambertMaterial({color:0x4fae7b,emissive:0x0d2a1a});
+// rib texture: steel arches along the roadway; chock texture: powered roof supports along the face
+function tunTex(draw){const c=document.createElement('canvas');c.width=128;c.height=128;const g=c.getContext('2d');draw(g,128,128);
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(8,maxAn);return t;}
+const ribTex=tunTex((g,w,h)=>{g.fillStyle='#d9d9d9';g.fillRect(0,0,w,h);
+  g.strokeStyle='rgba(60,60,60,.35)';g.lineWidth=1;for(let x=0;x<w;x+=8){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();}for(let y=0;y<h;y+=8){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}
+  for(let y=0;y<h;y+=32){const gr=g.createLinearGradient(0,y,0,y+10);gr.addColorStop(0,'#555');gr.addColorStop(.5,'#fff');gr.addColorStop(1,'#444');g.fillStyle=gr;g.fillRect(0,y,w,10);}});
+const chockTex=tunTex((g,w,h)=>{g.fillStyle='#bdbdbd';g.fillRect(0,0,w,h);
+  for(let y=0;y<h;y+=21){g.fillStyle='#f2f2f2';g.fillRect(4,y+2,w-8,15);g.fillStyle='#6a6a6a';g.fillRect(4,y+16,w-8,3);
+    g.fillStyle='#4a4a4a';g.fillRect(w*.3,y+5,6,10);g.fillRect(w*.65,y+5,6,10);}});
+const roadMat=new THREE.MeshLambertMaterial({color:0xe4ebef,emissive:0x1d2a33,map:ribTex});
+const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0x4a3300,map:chockTex});
+const retMat=new THREE.MeshLambertMaterial({color:0xe0404f,emissive:0x3a0710,map:ribTex});
+const driftMat=new THREE.MeshLambertMaterial({color:0xff9a33,emissive:0x3d1e00,map:ribTex});
+const hhMat=new THREE.MeshLambertMaterial({color:0xe2c159,emissive:0x3a2e08,map:ribTex});
+const thMat=new THREE.MeshLambertMaterial({color:0x5cc08a,emissive:0x0d2a1a,map:ribTex});
 const tunGroup=new THREE.Group(); scene.add(tunGroup);   // in scene units: y already multiplied by VE
 let tunPending=false;
 function buildModelTunnels(){
   tunPending=false; tunGroup.children.forEach(m=>m.geometry.dispose()); tunGroup.clear();
   const r=+$('tunW').value/2, SEG=8;
-  const acc={r:{p:[],i:[]},f:{p:[],i:[]},a:{p:[],i:[]},d:{p:[],i:[]},h:{p:[],i:[]},t:{p:[],i:[]}};
+  const acc={};for(const k of 'rfadht')acc[k]={p:[],u:[],i:[]};
   WALK.tunnels.forEach((line,ti)=>{
     const kd=WALK.kinds[ti], A=acc[acc[kd]?kd:'r'];
     const pts=line.filter((_,k)=>k%2===0||k===line.length-1).map(([E,N,z])=>[wx(E),z*VE+r*0.55,wz(N)]);
     if(pts.length<2) return; const base=A.p.length/3;
-    pts.forEach((c,k)=>{const a=pts[Math.max(0,k-1)],b=pts[Math.min(pts.length-1,k+1)];
+    let dist=0;
+    pts.forEach((c,k)=>{if(k){const p=pts[k-1];dist+=Math.hypot(c[0]-p[0],c[1]-p[1],c[2]-p[2]);}
+      const a=pts[Math.max(0,k-1)],b=pts[Math.min(pts.length-1,k+1)];
       let tx=b[0]-a[0],tz=b[2]-a[2];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
-      for(let j=0;j<SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);}});
-    for(let k=0;k<pts.length-1;k++)for(let j=0;j<SEG;j++){const a=base+k*SEG+j,b=base+k*SEG+(j+1)%SEG,c=a+SEG,d=b+SEG;A.i.push(a,c,b,b,c,d);}
+      for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,dist/(r*2.2));}});
+    const R1=SEG+1;for(let k=0;k<pts.length-1;k++)for(let j=0;j<SEG;j++){const a=base+k*R1+j,b=a+1,c=a+R1,d=b+R1;A.i.push(a,c,b,b,c,d);}
   });
   for(const [key,mat] of [['r',roadMat],['f',faceMat],['a',retMat],['d',driftMat],['h',hhMat],['t',thMat]]){const g=new THREE.BufferGeometry();
-    g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setIndex(acc[key].i);g.computeVertexNormals();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(acc[key].u,2));g.setIndex(acc[key].i);g.computeVertexNormals();
     const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',f:'L_face',a:'L_ret',d:'L_drift',h:'L_drift',t:'L_drift'}[key]).checked;tunGroup.add(m);}
 }
 function queueTunnels(){if(!tunPending){tunPending=true;requestAnimationFrame(buildModelTunnels);}}
@@ -512,7 +528,7 @@ function applyCut(){
   else if(cutMode==='ns'){clipPlanes=[planeE];clipInter=false; cutGroup.add(new THREE.Mesh(sectionGeom(Ecut,G.N0,Ecut,G.N1),cutMat));}
   else {clipPlanes=[];}
   $('eCut').disabled=cutMode==='ew'||cutMode==='none'; $('nCut').disabled=cutMode==='ns'||cutMode==='none';
-  const tqm=[...tqPlanMats,...tqDepthMats,roadMat,faceMat,retMat,driftMat,hhMat,thMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
+  const tqm=[...tqPlanMats,...tqDepthMats,...planMats,roadMat,faceMat,retMat,driftMat,hhMat,thMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
   for(const m of mats){m.clippingPlanes=clipPlanes;m.clipIntersection=clipInter;m.needsUpdate=true;}
 }
 document.querySelectorAll('[data-cut]').forEach(b=>b.onclick=()=>{cutMode=b.dataset.cut;
@@ -523,6 +539,8 @@ for(const id of ['eCut','nCut','cutTq']) $(id).addEventListener('input',applyCut
 const vis=(id,obj)=>$(id).addEventListener('change',e=>obj.visible=e.target.checked);
 vis('L_cl',hz.cl);vis('L_hh',hz.hh);vis('L_th',hz.th);vis('L_tq',tqMesh);vis('L_grid',gridGroup);vis('L_ground',ground);vis('L_shaft',shaftGroup);
 $('gOp').addEventListener('input',e=>gMat.opacity=+e.target.value);
+$('L_plan').addEventListener('change',e=>planMeshes.forEach(m=>m.visible=e.target.checked));
+$('pOp').addEventListener('input',e=>planMats.forEach(m=>m.opacity=+e.target.value));
 $('m_plan').onclick=()=>{tqMeshes.forEach((m,k)=>m.material=tqPlanMats[k]);$('m_plan').setAttribute('aria-pressed',true);$('m_depth').setAttribute('aria-pressed',false);$('rampBox').hidden=true;};
 $('m_depth').onclick=()=>{tqMeshes.forEach((m,k)=>m.material=tqDepthMats[k]);$('m_depth').setAttribute('aria-pressed',true);$('m_plan').setAttribute('aria-pressed',false);$('rampBox').hidden=false;};
 $('ve').addEventListener('input',e=>{const nv=+e.target.value;const r=nv/VE;VE=nv;world.scale.y=VE;

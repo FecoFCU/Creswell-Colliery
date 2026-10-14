@@ -182,10 +182,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="row"><label><input type="checkbox" id="L_th"><span class="sw" style="background:var(--th)"></span>Top Hard</label><span class="lvl">−315.3</span></div>
     <div class="row"><label><input type="checkbox" id="L_tq" checked><span class="sw" style="background:var(--tq)"></span>Threequarter workings</label><span class="lvl">−583.3</span></div>
     <div class="row"><label><input type="checkbox" id="L_road" checked><span class="sw" style="background:#e4ebef;border:1px solid var(--rule)"></span>Main roads</label></div>
+    <div class="row"><label><input type="checkbox" id="L_int" checked><span class="sw" style="background:#2f6fd6"></span>Intake (fresh air) main roads</label></div>
     <div class="row"><label><input type="checkbox" id="L_load" checked><span class="sw" style="background:#5fb0ff"></span>Loader gates (fresh air, conveyor)</label></div>
     <div class="row"><label><input type="checkbox" id="L_sup" checked><span class="sw" style="background:#e56b6f"></span>Supply gates (dirty side, rope haulage)</label></div>
     <div class="row"><label><input type="checkbox" id="L_face" checked><span class="sw" style="background:#ffc400"></span>Faces: working <span class="sw" style="background:#7d8ea3;margin-left:4px"></span>worked out</label></div>
-    <div class="row"><label><input type="checkbox" id="L_ret" checked><span class="sw" style="background:#d7263d"></span>Return airways, No.&nbsp;2 Shaft</label></div>
+    <div class="row"><label><input type="checkbox" id="L_ret" checked><span class="sw" style="background:#d7263d"></span>Return (dirty air) roads, No.&nbsp;2 Shaft</label></div>
+    <div class="row"><label><input type="checkbox" id="L_door" checked><span class="sw" style="background:#f5f1e6;border:1px solid var(--rule)"></span>Air doors</label></div>
     <div class="row"><label><input type="checkbox" id="L_drift" checked><span class="sw" style="background:#ff8c1a"></span>Drifts to Top Hard &amp; High Hazel</label></div>
     <div class="kv"><span>Tunnel size on screen</span><b id="tunV">14 m</b></div>
     <input type="range" id="tunW" min="4" max="40" step="1" value="14" aria-label="Tunnel size">
@@ -452,6 +454,7 @@ const chockTex=tunTex((g,w,h)=>{g.fillStyle='#bdbdbd';g.fillRect(0,0,w,h);
     g.fillStyle='#4a4a4a';g.fillRect(w*.3,y+5,6,10);g.fillRect(w*.65,y+5,6,10);}});
 const roadMat=new THREE.MeshLambertMaterial({color:0xe4ebef,emissive:0xe4ebef,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
 const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0xffc400,emissiveIntensity:0.45,map:chockTex,emissiveMap:chockTex});
+const intMat=new THREE.MeshLambertMaterial({color:0x2f6fd6,emissive:0x2f6fd6,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
 const loadMat=new THREE.MeshLambertMaterial({color:0x5fb0ff,emissive:0x5fb0ff,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
 const supMat=new THREE.MeshLambertMaterial({color:0xe56b6f,emissive:0xe56b6f,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
 const faceOutMat=new THREE.MeshLambertMaterial({color:0x7d8ea3,emissive:0x7d8ea3,emissiveIntensity:0.35,map:chockTex,emissiveMap:chockTex});
@@ -464,7 +467,7 @@ let tunPending=false;
 function buildModelTunnels(){
   tunPending=false; tunGroup.children.forEach(m=>m.geometry.dispose()); tunGroup.clear();
   const r=+$('tunW').value/2, SEG=8;
-  const acc={};for(const k of 'rfadhtls')acc[k]={p:[],u:[],i:[],y:[]};
+  const acc={};for(const k of 'rfadhtlsi')acc[k]={p:[],u:[],i:[],y:[]};
   WALK.tunnels.forEach((line,ti)=>{
     const kd=WALK.kinds[ti], A=acc[acc[kd]&&kd!=='f'?kd:'r'];
     const sel=line.filter((_,k)=>k%2===0||k===line.length-1);
@@ -477,11 +480,11 @@ function buildModelTunnels(){
       for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,dist/(r*2.2));A.y.push(pyr[k]);}});
     const R1=SEG+1;for(let k=0;k<pts.length-1;k++)for(let j=0;j<SEG;j++){const a=base+k*R1+j,b=a+1,c=a+R1,d=b+R1;A.i.push(a,c,b,b,c,d);}
   });
-  for(const [key,mat] of [['r',roadMat],['a',retMat],['d',driftMat],['h',hhMat],['t',thMat],['l',loadMat],['s',supMat]]){const g=new THREE.BufferGeometry();
+  for(const [key,mat] of [['r',roadMat],['a',retMat],['d',driftMat],['h',hhMat],['t',thMat],['l',loadMat],['s',supMat],['i',intMat]]){const g=new THREE.BufferGeometry();
     g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(acc[key].u,2));g.setAttribute('ayr',new THREE.Float32BufferAttribute(acc[key].y,1));g.setIndex(acc[key].i);g.computeVertexNormals();
-    const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',a:'L_ret',d:'L_drift',h:'L_drift',t:'L_drift',l:'L_load',s:'L_sup'}[key]).checked;tunGroup.add(m);}
+    const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',a:'L_ret',d:'L_drift',h:'L_drift',t:'L_drift',l:'L_load',s:'L_sup',i:'L_int'}[key]).checked;tunGroup.add(m);}
 }
-for(const m of [roadMat,faceMat,retMat,driftMat,hhMat,thMat,loadMat,supMat]) tunTime(m);
+for(const m of [roadMat,faceMat,retMat,driftMat,hhMat,thMat,loadMat,supMat,intMat]) tunTime(m);
 // ---- longwall faces: positioned from the fitted face advance of each panel at time T
 const faceGroup=new THREE.Group(); scene.add(faceGroup);
 let FACE_T=1991.72;      // abandonment, 20 Sept 1991
@@ -506,11 +509,19 @@ function buildFaces(){
     faceGroup.add(new THREE.Mesh(g,mat));}
   faceGroup.visible=$('L_face').checked;
 }
-function queueTunnels(){if(!tunPending){tunPending=true;requestAnimationFrame(()=>{buildModelTunnels();buildFaces();});}}
-buildModelTunnels(); buildFaces();
+const doorGroup=new THREE.Group(); scene.add(doorGroup);
+const doorMat=new THREE.MeshLambertMaterial({color:0xf5f1e6,emissive:0xf5f1e6,emissiveIntensity:0.35});
+function buildDoors(){doorGroup.children.forEach(m=>m.geometry.dispose());doorGroup.clear();const r=+$('tunW').value/2;
+  for(const [E,N,z,h] of (WALK.doors||[])){const m=new THREE.Mesh(new THREE.BoxGeometry(r*2.6,r*2.4,Math.max(2,r*0.35)),doorMat);
+    m.position.set(wx(E),z*VE+r*0.55,wz(N)); m.rotation.y=-h; doorGroup.add(m);}
+  doorGroup.visible=$('L_door').checked;}
+function queueTunnels(){if(!tunPending){tunPending=true;requestAnimationFrame(()=>{buildModelTunnels();buildFaces();buildDoors();});}}
+buildModelTunnels(); buildFaces(); buildDoors();
+$('L_door').addEventListener('change',e=>doorGroup.visible=e.target.checked);
 $('tunW').addEventListener('input',e=>{$('tunV').textContent=e.target.value+' m';queueTunnels();});
 $('L_road').addEventListener('change',e=>{const m=tunGroup.getObjectByName('r');if(m)m.visible=e.target.checked;});
 $('L_face').addEventListener('change',e=>{faceGroup.visible=e.target.checked;});
+$('L_int').addEventListener('change',e=>{const m=tunGroup.getObjectByName('i');if(m)m.visible=e.target.checked;});
 $('L_load').addEventListener('change',e=>{const m=tunGroup.getObjectByName('l');if(m)m.visible=e.target.checked;});
 $('L_sup').addEventListener('change',e=>{const m=tunGroup.getObjectByName('s');if(m)m.visible=e.target.checked;});
 $('L_ret').addEventListener('change',e=>{const m=tunGroup.getObjectByName('a');if(m)m.visible=e.target.checked;});
@@ -585,7 +596,7 @@ function applyCut(){
   else if(cutMode==='ns'){clipPlanes=[planeE];clipInter=false; cutGroup.add(new THREE.Mesh(sectionGeom(Ecut,G.N0,Ecut,G.N1),cutMat));}
   else {clipPlanes=[];}
   $('eCut').disabled=cutMode==='ew'||cutMode==='none'; $('nCut').disabled=cutMode==='ns'||cutMode==='none';
-  const tqm=[...tqPlanMats,...tqDepthMats,...planMats,roadMat,faceMat,faceOutMat,loadMat,supMat,retMat,driftMat,hhMat,thMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
+  const tqm=[...tqPlanMats,...tqDepthMats,...planMats,roadMat,faceMat,faceOutMat,loadMat,supMat,intMat,retMat,driftMat,hhMat,thMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
   for(const m of mats){m.clippingPlanes=clipPlanes;m.clipIntersection=clipInter;m.needsUpdate=true;}
 }
 document.querySelectorAll('[data-cut]').forEach(b=>b.onclick=()=>{cutMode=b.dataset.cut;
@@ -781,7 +792,7 @@ function buildTunnels(){
     const mk=(P)=>{let d=0;return P.map((c,k)=>{if(k)d+=Math.hypot(c[0]-P[k-1][0],c[1]-P[k-1][1],c[2]-P[k-1][2]);
       const a=P[Math.max(0,k-1)],b=P[Math.min(P.length-1,k+1)];let tx=b[0]-a[0],tz=b[2]-a[2];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
       return {c,s:[tz,-tx],d};});};
-    if(arch.length>1){const R=mk(arch); const A='as'.includes(D.kinds[ti])?AR:D.kinds[ti]==='l'?AL:A0;
+    if(arch.length>1){const R=mk(arch); const A='as'.includes(D.kinds[ti])?AR:'li'.includes(D.kinds[ti])?AL:A0;
       ribbon(A,R,PROF,k=>PU[k]/2.5,1);
       if(!'as'.includes(D.kinds[ti])) ribbon(B,R,[[2.15,0.95],[1.05,0.95],[1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing outbye (tunnels run outbye→inbye)
       for(const [end,flag] of [[R[0],fa],[R[R.length-1],fb]]) if(flag===2){ // dead end: close with a stopping
@@ -813,6 +824,18 @@ function buildTunnels(){
   const cf=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.06,3.2),new THREE.MeshLambertMaterial({color:0x5a5148}));W.cage.add(cf);
   for(const sx of [-0.8,0.8])for(let k=0;k<6;k++){const bar=new THREE.Mesh(new THREE.BoxGeometry(0.04,2.2,0.04),new THREE.MeshLambertMaterial({color:0x6e665c}));bar.position.set(sx,1.1,-1.5+k*0.6);W.cage.add(bar);}
   W.cage.visible=false; wscene.add(W.cage);
+  // air doors: steel frame across the arch with a timber door leaf standing open
+  const frameM=new THREE.MeshLambertMaterial({color:0x8a7a62}), leafM=new THREE.MeshLambertMaterial({color:0xc9b48a,side:THREE.DoubleSide});
+  for(const [E,N,z,h] of (D.doors||[])){const g=new THREE.Group(); g.position.set(wx(E),z,wz(N)); g.rotation.y=-h;
+    for(const sx of [-1.6,1.6]){const p=new THREE.Mesh(new THREE.BoxGeometry(0.2,2.8,0.25),frameM);p.position.set(sx,1.4,0);g.add(p);}
+    const lint=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.25,0.25),frameM);lint.position.set(0,2.85,0);g.add(lint);
+    const wall=new THREE.Mesh(new THREE.ShapeGeometry((()=>{const sh=new THREE.Shape();sh.moveTo(-HW,0);for(const [px,py] of PROF.slice(1))sh.lineTo(px,py);
+      const hole=new THREE.Path();hole.moveTo(-1.5,0.02);hole.lineTo(1.5,0.02);hole.lineTo(1.5,2.75);hole.lineTo(-1.5,2.75);hole.lineTo(-1.5,0.02);sh.holes.push(hole);return sh;})()),
+      new THREE.MeshLambertMaterial({color:0x6d675c,side:THREE.DoubleSide}));g.add(wall);
+    const leaf=new THREE.Mesh(new THREE.BoxGeometry(1.45,2.65,0.08),leafM);leaf.geometry.translate(0.72,1.33,0);leaf.position.set(-1.5,0.04,0);leaf.rotation.y=-1.25;g.add(leaf);
+    const leaf2=leaf.clone();leaf2.position.set(1.5,0.04,0);leaf2.rotation.y=Math.PI+1.25;g.add(leaf2);
+    wscene.add(g);}
+  W.doorStops=D.stops.map(([E,N])=>(D.doors||[]).some(([e,n])=>Math.hypot(e-E,n-N)<22));
   // which stops lie in a return airway
   const H=new Map(), hk=(E,N)=>Math.round(E/10)+','+Math.round(N/10);
   D.tunnels.forEach((l,ti)=>{const k=D.kinds[ti]; if(k==='r') return; for(const q of l){const h=hk(q[0],q[1]); if(!H.has(h))H.set(h,[]); H.get(h).push([q,k]);}});
@@ -874,9 +897,10 @@ function updWalkInfo(){
   let near='',nd=1e9; for(const [t,e,n] of DIST){const d=Math.hypot(e-E,n-N);if(d<nd){nd=d;near=t;}}
   const deg=W.data.nb[W.cur].length;
   $('wRef').textContent=sk(E,N); $('wLv').textContent=`${z.toFixed(1)} m OD`; $('wDep').textContent=`~${(GROUND-z).toFixed(0)} m`;
-  $('wGr').textContent=grad; const KN={l:'Loader gate · fresh air, conveyor',s:'Supply gate · dirty side, rope haulage',a:'Return airway (No. 2 Shaft)',d:'Drift between seams',h:'High Hazel seam roadway',t:'Top Hard level roadway',f:'Face line (panel end)'};
+  $('wGr').textContent=grad; const KN={i:'Intake (fresh air) main road',l:'Loader gate · fresh air, conveyor',s:'Supply gate · dirty side, rope haulage',a:'Return airway (No. 2 Shaft)',d:'Drift between seams',h:'High Hazel seam roadway',t:'Top Hard level roadway',f:'Face line (panel end)'};
   $('wKind').textContent=W.kind&&KN[W.kind[W.cur]]?KN[W.kind[W.cur]]+(deg>=3?' · junction':''):deg>=3?`Junction (${deg} ways)`:deg===1?'End of roadway':(wk?'Gate road, edge of worked panel':'Roadway');
   $('wNear').textContent=near.replace(/ ·.*/,'');
+  if(W.doorStops&&W.doorStops[W.cur]) $('wKind').textContent='Air doors: fresh air side / No. 2 Shaft return';
   if(performance.now()-flashT>2500) $('ro').textContent=`${sk(E,N)} · floor ${z.toFixed(1)} m OD · heading ${(((W.yaw*180/Math.PI)%360+360)%360).toFixed(0)}° · ${grad}`;
 }
 

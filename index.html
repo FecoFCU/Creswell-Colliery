@@ -171,7 +171,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       <div class="dist" id="wdist"></div>
     </div>
     <div class="sec note">
-      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates with deep stone dust on the floors following the Threequarter floor levels. Panel 2's east gate was a face gate until the panel finished, then became the Parkhall main return road (it turns red at that date). Fresh and return air never meet: where the roads cross, the return is carried over the intake on an air crossing, cross-cuts between them are sealed with stoppings, and pit-bottom connections pass through air doors. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Faces have no arches: they are 1&nbsp;m high on 5-leg chocks with an armoured face conveyor, and the view drops to a crouch there. Arches are lagged with corrugated steel sheets about 3&nbsp;ft by 5&nbsp;ft. The No.&nbsp;2 pit bottom has whitewashed brick walls about 20&nbsp;ft high under steel girders out to the first turn towards the 50s, and the arches beyond it are painted white for about 100&nbsp;m. Conveyors run only in loader gates and intake roads. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
+      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates with deep stone dust on the floors following the Threequarter floor levels. Panel 2's east gate was a face gate until the panel finished, then became the Parkhall main return road (it turns red at that date). Fresh and return air never meet: where the roads cross, one is carried over the other on an air crossing (the fresh-air drift behind No.&nbsp;2 shaft comes in over the return and runs straight into the main intake, with no doors), cross-cuts between them are sealed with stoppings, and pit-bottom connections pass through air doors. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Faces have no arches: they are 1&nbsp;m high on 5-leg chocks with an armoured face conveyor, and the view drops to a crouch there. Arches are lagged with corrugated steel sheets about 3&nbsp;ft by 5&nbsp;ft. The No.&nbsp;2 pit bottom has whitewashed brick walls about 20&nbsp;ft high under steel girders out to the first turn towards the 50s, and the arches beyond it are painted white for about 100&nbsp;m. Conveyors run only in loader gates and intake roads. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
       <button class="btn" id="wModel" style="margin-top:8px">Show this spot in the 3D model</button>
     </div>
   </div>
@@ -1005,7 +1005,7 @@ function buildTunnels(){
     const g=new THREE.ShapeGeometry(sh); const uv=g.attributes.uv; for(let k=0;k<uv.count;k++) uv.setXY(k,uv.getX(k)/1.5,uv.getY(k)/1.5);
     const m=new THREE.Mesh(g,stopWallM); m.position.set(wx(E),z,wz(N)); m.rotation.y=-h; wscene.add(m);}
   W.stopStops=D.stops.map(([E,N])=>(D.stoppings||[]).some(([e,n])=>Math.hypot(e-E,n-N)<30));
-  W.ocStops=D.stops.map(([E,N])=>(D.overcasts||[]).some(([e,n])=>Math.hypot(e-E,n-N)<20));
+  W.ocStops=D.stops.map(([E,N])=>{const o=(D.overcasts||[]).find(([e,n])=>Math.hypot(e-E,n-N)<20); return o?(o[3]?2:1):0;});
   W.doorStops=D.stops.map(([E,N])=>(D.doors||[]).some(([e,n])=>Math.hypot(e-E,n-N)<22));
   // which stops lie in a return airway
   const H=new Map(), hk=(E,N)=>Math.round(E/10)+','+Math.round(N/10);
@@ -1074,7 +1074,7 @@ function updWalkInfo(){
   $('wNear').textContent=near.replace(/ ·.*/,'');
   if(W.doorStops&&W.doorStops[W.cur]) $('wKind').textContent='Air doors: fresh air side / No. 2 Shaft return';
   else if(W.pbStops&&W.pbStops[W.cur]) $('wKind').textContent='No. 2 pit bottom · whitewashed brick walls, steel girders, stone-dusted floor';
-  else if(W.ocStops&&W.ocStops[W.cur]) $('wKind').textContent='Air crossing: return passes over the fresh-air road';
+  else if(W.ocStops&&W.ocStops[W.cur]) $('wKind').textContent=W.ocStops[W.cur]===2?'Air crossing: the fresh-air drift road passes over the return':'Air crossing: return passes over the fresh-air road';
   else if(W.stopStops&&W.stopStops[W.cur]&&deg<=1) $('wKind').textContent='Stopping: cross-cut sealed between fresh and return air';
   if(performance.now()-flashT>2500) $('ro').textContent=`${sk(E,N)} · floor ${z.toFixed(1)} m OD · heading ${(((W.yaw*180/Math.PI)%360+360)%360).toFixed(0)}° · ${grad}`;
 }

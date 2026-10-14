@@ -168,7 +168,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       <div class="dist" id="wdist"></div>
     </div>
     <div class="sec note">
-      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
+      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Fresh and return air never meet: where the roads cross, the return is carried over the intake on an air crossing, cross-cuts between them are sealed with stoppings, and pit-bottom connections pass through air doors. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
       <button class="btn" id="wModel" style="margin-top:8px">Show this spot in the 3D model</button>
     </div>
   </div>
@@ -187,7 +187,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="row"><label><input type="checkbox" id="L_sup" checked><span class="sw" style="background:#e56b6f"></span>Supply gates (dirty side, rope haulage)</label></div>
     <div class="row"><label><input type="checkbox" id="L_face" checked><span class="sw" style="background:#ffc400"></span>Faces: working <span class="sw" style="background:#7d8ea3;margin-left:4px"></span>worked out</label></div>
     <div class="row"><label><input type="checkbox" id="L_ret" checked><span class="sw" style="background:#d7263d"></span>Return (dirty air) roads, No.&nbsp;2 Shaft</label></div>
-    <div class="row"><label><input type="checkbox" id="L_door" checked><span class="sw" style="background:#f5f1e6;border:1px solid var(--rule)"></span>Air doors</label></div>
+    <div class="row"><label><input type="checkbox" id="L_door" checked><span class="sw" style="background:#f5f1e6;border:1px solid var(--rule)"></span>Air doors <span class="sw" style="background:#4a4a4a;margin-left:4px"></span>stoppings</label></div>
     <div class="row"><label><input type="checkbox" id="L_drift" checked><span class="sw" style="background:#ff8c1a"></span>Drifts to Top Hard &amp; High Hazel</label></div>
     <div class="kv"><span>Tunnel size on screen</span><b id="tunV">14 m</b></div>
     <input type="range" id="tunW" min="4" max="40" step="1" value="14" aria-label="Tunnel size">
@@ -512,8 +512,11 @@ function buildFaces(){
 }
 const doorGroup=new THREE.Group(); scene.add(doorGroup);
 const doorMat=new THREE.MeshLambertMaterial({color:0xf5f1e6,emissive:0xf5f1e6,emissiveIntensity:0.35});
+const stopMat=new THREE.MeshLambertMaterial({color:0x4a4a4a,emissive:0x222222});
 function buildDoors(){doorGroup.children.forEach(m=>m.geometry.dispose());doorGroup.clear();const r=+$('tunW').value/2;
   for(const [E,N,z,h] of (WALK.doors||[])){const m=new THREE.Mesh(new THREE.BoxGeometry(r*2.6,r*2.4,Math.max(2,r*0.35)),doorMat);
+    m.position.set(wx(E),z*VE+r*0.55,wz(N)); m.rotation.y=-h; doorGroup.add(m);}
+  for(const [E,N,z,h] of (WALK.stoppings||[])){const m=new THREE.Mesh(new THREE.BoxGeometry(r*2.8,r*2.6,Math.max(3,r*0.6)),stopMat);
     m.position.set(wx(E),z*VE+r*0.55,wz(N)); m.rotation.y=-h; doorGroup.add(m);}
   doorGroup.visible=$('L_door').checked;}
 function queueTunnels(){if(!tunPending){tunPending=true;requestAnimationFrame(()=>{buildModelTunnels();buildFaces();buildDoors();});}}
@@ -837,6 +840,14 @@ function buildTunnels(){
     const leaf=new THREE.Mesh(new THREE.BoxGeometry(1.45,2.65,0.08),leafM);leaf.geometry.translate(0.72,1.33,0);leaf.position.set(-1.5,0.04,0);leaf.rotation.y=-1.25;g.add(leaf);
     const leaf2=leaf.clone();leaf2.position.set(1.5,0.04,0);leaf2.rotation.y=Math.PI+1.25;g.add(leaf2);
     wscene.add(g);}
+  // stoppings: solid wall sealing the cross-cut between a fresh and a return road
+  const stopWallM=new THREE.MeshLambertMaterial({map:canvasTex(128,128,(g,w,h)=>{grain(g,w,h,'#6e6a62',3000);g.strokeStyle='rgba(30,28,25,.5)';
+    for(let y=0;y<h;y+=16){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();for(let x=((y/16)%2)*16;x<w;x+=32){g.beginPath();g.moveTo(x,y);g.lineTo(x,y+16);g.stroke();}}}),side:THREE.DoubleSide});
+  for(const [E,N,z,h] of (D.stoppings||[])){const sh=new THREE.Shape();sh.moveTo(-HW,0);for(const [px,py] of PROF.slice(1))sh.lineTo(px,py);
+    const g=new THREE.ShapeGeometry(sh); const uv=g.attributes.uv; for(let k=0;k<uv.count;k++) uv.setXY(k,uv.getX(k)/1.5,uv.getY(k)/1.5);
+    const m=new THREE.Mesh(g,stopWallM); m.position.set(wx(E),z,wz(N)); m.rotation.y=-h; wscene.add(m);}
+  W.stopStops=D.stops.map(([E,N])=>(D.stoppings||[]).some(([e,n])=>Math.hypot(e-E,n-N)<30));
+  W.ocStops=D.stops.map(([E,N])=>(D.overcasts||[]).some(([e,n])=>Math.hypot(e-E,n-N)<20));
   W.doorStops=D.stops.map(([E,N])=>(D.doors||[]).some(([e,n])=>Math.hypot(e-E,n-N)<22));
   // which stops lie in a return airway
   const H=new Map(), hk=(E,N)=>Math.round(E/10)+','+Math.round(N/10);
@@ -903,6 +914,8 @@ function updWalkInfo(){
   $('wKind').textContent=W.kind&&KN[W.kind[W.cur]]?KN[W.kind[W.cur]]+(deg>=3?' · junction':''):deg>=3?`Junction (${deg} ways)`:deg===1?'End of roadway':(wk?'Gate road, edge of worked panel':'Roadway');
   $('wNear').textContent=near.replace(/ ·.*/,'');
   if(W.doorStops&&W.doorStops[W.cur]) $('wKind').textContent='Air doors: fresh air side / No. 2 Shaft return';
+  else if(W.ocStops&&W.ocStops[W.cur]) $('wKind').textContent='Air crossing: return passes over the fresh-air road';
+  else if(W.stopStops&&W.stopStops[W.cur]&&deg<=1) $('wKind').textContent='Stopping: cross-cut sealed between fresh and return air';
   if(performance.now()-flashT>2500) $('ro').textContent=`${sk(E,N)} · floor ${z.toFixed(1)} m OD · heading ${(((W.yaw*180/Math.PI)%360+360)%360).toFixed(0)}° · ${grad}`;
 }
 

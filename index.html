@@ -445,21 +445,20 @@ const gridGroup=new THREE.Group(); world.add(gridGroup);
 // rib texture: steel arches along the roadway; chock texture: powered roof supports along the face
 function tunTex(draw){const c=document.createElement('canvas');c.width=128;c.height=128;const g=c.getContext('2d');draw(g,128,128);
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(8,maxAn);return t;}
-const ribTex=tunTex((g,w,h)=>{g.fillStyle='#d9d9d9';g.fillRect(0,0,w,h);
-  g.strokeStyle='rgba(60,60,60,.35)';g.lineWidth=1;for(let x=0;x<w;x+=8){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();}for(let y=0;y<h;y+=8){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}
-  for(let y=0;y<h;y+=32){const gr=g.createLinearGradient(0,y,0,y+10);gr.addColorStop(0,'#555');gr.addColorStop(.5,'#fff');gr.addColorStop(1,'#444');g.fillStyle=gr;g.fillRect(0,y,w,10);}});
+const ribTex=tunTex((g,w,h)=>{g.fillStyle='#f4f4f4';g.fillRect(0,0,w,h);
+  for(let y=0;y<h;y+=32){const gr=g.createLinearGradient(0,y,0,y+8);gr.addColorStop(0,'#c9c9c9');gr.addColorStop(.5,'#ffffff');gr.addColorStop(1,'#c4c4c4');g.fillStyle=gr;g.fillRect(0,y,w,8);}});
 const chockTex=tunTex((g,w,h)=>{g.fillStyle='#bdbdbd';g.fillRect(0,0,w,h);
   for(let y=0;y<h;y+=21){g.fillStyle='#f2f2f2';g.fillRect(4,y+2,w-8,15);g.fillStyle='#6a6a6a';g.fillRect(4,y+16,w-8,3);
     g.fillStyle='#4a4a4a';g.fillRect(w*.3,y+5,6,10);g.fillRect(w*.65,y+5,6,10);}});
-const roadMat=new THREE.MeshLambertMaterial({color:0xe4ebef,emissive:0x1d2a33,map:ribTex});
-const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0x6a4600,map:chockTex});
-const loadMat=new THREE.MeshLambertMaterial({color:0x5fb0ff,emissive:0x0b2238,map:ribTex});
-const supMat=new THREE.MeshLambertMaterial({color:0xe56b6f,emissive:0x2e0b0d,map:ribTex});
-const faceOutMat=new THREE.MeshLambertMaterial({color:0x7d8ea3,emissive:0x141a22,map:chockTex});
-const retMat=new THREE.MeshLambertMaterial({color:0xe0404f,emissive:0x3a0710,map:ribTex});
-const driftMat=new THREE.MeshLambertMaterial({color:0xff9a33,emissive:0x3d1e00,map:ribTex});
-const hhMat=new THREE.MeshLambertMaterial({color:0xe2c159,emissive:0x3a2e08,map:ribTex});
-const thMat=new THREE.MeshLambertMaterial({color:0x5cc08a,emissive:0x0d2a1a,map:ribTex});
+const roadMat=new THREE.MeshLambertMaterial({color:0xe4ebef,emissive:0xe4ebef,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
+const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0xffc400,emissiveIntensity:0.45,map:chockTex,emissiveMap:chockTex});
+const loadMat=new THREE.MeshLambertMaterial({color:0x5fb0ff,emissive:0x5fb0ff,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
+const supMat=new THREE.MeshLambertMaterial({color:0xe56b6f,emissive:0xe56b6f,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
+const faceOutMat=new THREE.MeshLambertMaterial({color:0x7d8ea3,emissive:0x7d8ea3,emissiveIntensity:0.35,map:chockTex,emissiveMap:chockTex});
+const retMat=new THREE.MeshLambertMaterial({color:0xe0404f,emissive:0xe0404f,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
+const driftMat=new THREE.MeshLambertMaterial({color:0xff9a33,emissive:0xff9a33,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
+const hhMat=new THREE.MeshLambertMaterial({color:0xe2c159,emissive:0xe2c159,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
+const thMat=new THREE.MeshLambertMaterial({color:0x5cc08a,emissive:0x5cc08a,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
 const tunGroup=new THREE.Group(); scene.add(tunGroup);   // in scene units: y already multiplied by VE
 let tunPending=false;
 function buildModelTunnels(){
@@ -744,7 +743,8 @@ const beltTex=canvasTex(128,128,(g,w,h)=>{grain(g,w,h,'#151514',2500);g.fillStyl
 const shaftTex=canvasTex(256,256,(g,w,h)=>{grain(g,w,h,'#5a554d',9000);g.fillStyle='rgba(20,18,15,.6)';for(let y=0;y<h;y+=64)g.fillRect(0,y,w,4);
   g.fillStyle='rgba(20,18,15,.35)';for(let x=0;x<w;x+=32)for(let y=0;y<h;y+=64)g.fillRect(x+((y/64)%2)*16,y,2,64);});
 const archMat=new THREE.MeshLambertMaterial({map:archTex,side:THREE.DoubleSide});
-const archRetMat=new THREE.MeshLambertMaterial({map:archTex,color:0xffb0a4,side:THREE.DoubleSide});
+const archRetMat=new THREE.MeshLambertMaterial({map:archTex,color:0xff6a5c,emissive:0x3a0806,side:THREE.DoubleSide});
+const archLoadMat=new THREE.MeshLambertMaterial({map:archTex,color:0x7fbfff,emissive:0x061a33,side:THREE.DoubleSide});
 const floorMat=new THREE.MeshLambertMaterial({map:floorTex,side:THREE.DoubleSide});
 const floorPlainTex=canvasTex(256,256,(g,w,h)=>{grain(g,w,h,'#2a2520',12000);});
 const floorRopeTex=canvasTex(256,256,(g,w,h)=>{grain(g,w,h,'#2a2520',12000);
@@ -763,7 +763,7 @@ PROF.push([HW,1.6],[HW,0]);
 const PU=[0];for(let i=1;i<PROF.length;i++)PU.push(PU[i-1]+Math.hypot(PROF[i][0]-PROF[i-1][0],PROF[i][1]-PROF[i-1][1]));
 
 function buildTunnels(){
-  const D=W.data, A0={p:[],u:[],i:[]}, AR={p:[],u:[],i:[]}, F={p:[],u:[],i:[]}, FL={p:[],u:[],i:[]}, FS={p:[],u:[],i:[]}, B={p:[],u:[],i:[]}, C={p:[],i:[]};
+  const D=W.data, A0={p:[],u:[],i:[]}, AR={p:[],u:[],i:[]}, AL={p:[],u:[],i:[]}, F={p:[],u:[],i:[]}, FL={p:[],u:[],i:[]}, FS={p:[],u:[],i:[]}, B={p:[],u:[],i:[]}, C={p:[],i:[]};
   function ribbon(T,rings,prof,uOf,vScale){ // rings: [{c:[x,y,z],s:[sx,sz],d}]
     const base=T.p.length/3, np=prof.length;
     for(const r of rings) for(let k=0;k<np;k++){const [px,py]=prof[k];
@@ -781,7 +781,7 @@ function buildTunnels(){
     const mk=(P)=>{let d=0;return P.map((c,k)=>{if(k)d+=Math.hypot(c[0]-P[k-1][0],c[1]-P[k-1][1],c[2]-P[k-1][2]);
       const a=P[Math.max(0,k-1)],b=P[Math.min(P.length-1,k+1)];let tx=b[0]-a[0],tz=b[2]-a[2];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
       return {c,s:[tz,-tx],d};});};
-    if(arch.length>1){const R=mk(arch); const A=D.kinds[ti]==='a'?AR:A0;
+    if(arch.length>1){const R=mk(arch); const A='as'.includes(D.kinds[ti])?AR:D.kinds[ti]==='l'?AL:A0;
       ribbon(A,R,PROF,k=>PU[k]/2.5,1);
       if(!'as'.includes(D.kinds[ti])) ribbon(B,R,[[2.15,0.95],[1.05,0.95],[1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing outbye (tunnels run outbye→inbye)
       for(const [end,flag] of [[R[0],fa],[R[R.length-1],fb]]) if(flag===2){ // dead end: close with a stopping
@@ -798,7 +798,7 @@ function buildTunnels(){
     for(let k=1;k<=16;k++)C.i.push(b2,b2+k,b2+k+1);}
   const geo=(T,uv)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(T.p,3));
     if(uv)g.setAttribute('uv',new THREE.Float32BufferAttribute(T.u,2));g.setIndex(T.i);g.computeVertexNormals();return g;};
-  wscene.add(new THREE.Mesh(geo(A0,true),archMat),new THREE.Mesh(geo(AR,true),archRetMat),new THREE.Mesh(geo(F,true),floorMat),new THREE.Mesh(geo(FL,true),floorPlainMat),new THREE.Mesh(geo(FS,true),floorRopeMat),new THREE.Mesh(geo(B,true),beltMat),new THREE.Mesh(geo(C,false),capMat));
+  wscene.add(new THREE.Mesh(geo(A0,true),archMat),new THREE.Mesh(geo(AR,true),archRetMat),new THREE.Mesh(geo(AL,true),archLoadMat),new THREE.Mesh(geo(F,true),floorMat),new THREE.Mesh(geo(FL,true),floorPlainMat),new THREE.Mesh(geo(FS,true),floorRopeMat),new THREE.Mesh(geo(B,true),beltMat),new THREE.Mesh(geo(C,false),capMat));
   // No. 2 shaft: lined barrel from surface to just above the Threequarter inset, pit-bottom chamber below
   const s=SHAFTS[0], top=s.top, bot=-578, h=top-bot;
   const sg=new THREE.CylinderGeometry(2.745,2.745,h,40,1,true); const uv=sg.attributes.uv; for(let k=0;k<uv.count;k++){uv.setXY(k,uv.getX(k)*6,uv.getY(k)*h/3);}

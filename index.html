@@ -161,7 +161,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
         <button class="btn" id="wJunc">Run to next junction</button>
       </div>
       <button class="btn" id="wCage">Ride the cage down No. 2 Shaft</button>
-      <button class="btn" id="wCage1">Ride No. 1 Shaft to the High Hazel</button>
+      <button class="btn" id="wCage1">Ride No. 1 Shaft (skip deck) to the High Hazel</button>
       <button class="btn" id="wStairs" disabled>Steel stairs down to the Top Hard</button>
       <button class="btn" id="wSkip" hidden>Skip to the bottom</button>
       <div class="note">Click an arrow on the floor to walk to the next stop (about 25&nbsp;m). Drag to look around, scroll to zoom. Keys: ↑&nbsp;↓ walk, ←&nbsp;→ turn, J runs to the next junction. Click the mini-map to jump anywhere.</div>
@@ -932,6 +932,16 @@ function buildTunnels(){
   const cf=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.06,3.2),new THREE.MeshLambertMaterial({color:0x5a5148}));W.cage.add(cf);
   for(const sx of [-0.8,0.8])for(let k=0;k<6;k++){const bar=new THREE.Mesh(new THREE.BoxGeometry(0.04,2.2,0.04),new THREE.MeshLambertMaterial({color:0x6e665c}));bar.position.set(sx,1.1,-1.5+k*0.6);W.cage.add(bar);}
   W.cage.visible=false; wscene.add(W.cage);
+  { // No. 1 Shaft coal skip with a small man-riding deck on top
+    W.skip=new THREE.Group(); const steel=new THREE.MeshPhongMaterial({color:0x4b4e52,specular:0x555555,shininess:40});
+    const body=new THREE.Mesh(new THREE.BoxGeometry(1.7,7.5,1.5),steel); body.position.y=-3.85; W.skip.add(body);
+    for(const sx of [-0.86,0.86]){const g=new THREE.Mesh(new THREE.BoxGeometry(0.08,7.6,0.12),new THREE.MeshPhongMaterial({color:0x2c2e30}));g.position.set(sx,-3.8,0);W.skip.add(g);}
+    const deck=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.08,1.6),new THREE.MeshPhongMaterial({color:0x6a665e,specular:0x333333})); W.skip.add(deck);
+    const railM=new THREE.MeshPhongMaterial({color:0xb08a2a});
+    for(const [x,z,w,d] of [[0,-0.78,1.8,0.05],[0,0.78,1.8,0.05],[-0.88,0,0.05,1.6],[0.88,0,0.05,1.6]]){const r=new THREE.Mesh(new THREE.BoxGeometry(w,0.05,d),railM);r.position.set(x,1.05,z);W.skip.add(r);}
+    for(const [x,z] of [[-0.88,-0.78],[0.88,-0.78],[-0.88,0.78],[0.88,0.78]]){const post=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.05,6),railM);post.position.set(x,0.52,z);W.skip.add(post);}
+    const bridle=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,8,6),steel); bridle.position.y=4; W.skip.add(bridle);   // rope capel above
+    W.skip.visible=false; wscene.add(W.skip); }
   wscene.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&o.geometry&&o.geometry.attributes.position&&LITMATS.includes(o.material)&&W.bakeLit) W.bakeLit(o.geometry);});
   // air doors: steel frame across the arch with a timber door leaf standing open
   const frameM=new THREE.MeshLambertMaterial({color:0x8a7a62}), leafM=new THREE.MeshLambertMaterial({color:0xc9b48a,side:THREE.DoubleSide});
@@ -1064,22 +1074,23 @@ function startRide(shaftIdx,fromY,toY,name,onEnd){
   if(W.anim) return; const s=SHAFTS[shaftIdx]; W.queue=[]; arrowGroup.clear();
   const dist=Math.abs(fromY-toY), P=windProfile(dist);
   W.shaft={t:0,P,dist,dir:Math.sign(toY-fromY),from:fromY,x:wx(s.E),z:wz(s.N),yaw0:W.yaw,name,onEnd,shaft:s,bounce:0};
-  W.cage.visible=true; W.amb.intensity=0.15; $('wSkip').hidden=false; flash(`Riding the cage, ${name}…`);
+  W.conv=shaftIdx===1?W.skip:W.cage; W.conv.visible=true; W.amb.intensity=0.15; $('wSkip').hidden=false;
+  flash(shaftIdx===1?'Riding the man-riding deck on top of the coal skip, No. 1 Shaft…':`Riding the cage, ${name}…`);
 }
 function rideCage(){const s=SHAFTS[0]; startRide(0,s.top,-583.3,'No. 2 Shaft',()=>{const pb=W.data.pit;goTo(pb,{face:headingTo(pb,W.data.nb[pb][0]),dur:1200});});}
 function rideCage1(){const s=SHAFTS[1]; startRide(1,s.top,-209.4,'No. 1 Shaft to the High Hazel',()=>{teleport(W.no1hh); W.amb.intensity=0.7;
   flash('No. 1 Shaft, High Hazel inset (−209.4). The winding stops here: take the steel stairs down to the Top Hard, or walk on to the High Hazel landing.'); $('wStairs').disabled=false;});}
-function endRide(){const S=W.shaft; W.shaft=null; W.cage.visible=false; W.amb.intensity=0.7; $('wSkip').hidden=true; if(S&&S.onEnd) S.onEnd();}
+function endRide(){const S=W.shaft; W.shaft=null; if(W.conv)W.conv.visible=false; W.amb.intensity=0.7; $('wSkip').hidden=true; if(S&&S.onEnd) S.onEnd();}
 function updShaft(dt){
   const S=W.shaft; S.t+=dt/1000; let y, v;
   if(S.t<S.P.T){ y=S.from+S.dir*S.P.pos(S.t); v=S.P.vel(S.t); }
   else { const tb=S.t-S.P.T; if(tb>4.5){ endRide(); return; }      // rope stretch: a damped bounce once the brakes hold
     y=S.from+S.dir*S.dist + 0.45*Math.exp(-tb/1.1)*Math.sin(2*Math.PI*tb/1.25); v=0; }
   wcam.position.set(S.x,y+EYE,S.z); W.yaw=S.yaw0+S.t*0.01; W.pitch=-0.12; look();
-  W.cage.position.set(S.x,y,S.z); W.cage.rotation.y=-W.yaw;
+  W.conv.position.set(S.x,y,S.z); W.conv.rotation.y=-W.yaw;
   const sh=S.shaft; let nxt=sh.insets.find(([,l])=>S.dir<0?l<y-1:l>y+1);
   $('ro').textContent=`${S.name} · ${y.toFixed(0)} m OD · ${(sh.top-y).toFixed(0)} m down · ${(v*3.281).toFixed(0)} ft/s`+(nxt?` · next inset ${nxt[0]} ${nxt[1].toFixed(1)}`:'');
-  $('wLv').textContent=`${y.toFixed(1)} m OD`; $('wDep').textContent=`${(sh.top-y).toFixed(0)} m`; $('wKind').textContent='In the cage, '+S.name; $('wRef').textContent=sk(sh.E,sh.N);
+  $('wLv').textContent=`${y.toFixed(1)} m OD`; $('wDep').textContent=`${(sh.top-y).toFixed(0)} m`; $('wKind').textContent=(W.conv===W.skip?'Man-riding deck on the coal skip, ':'In the cage, ')+S.name; $('wRef').textContent=sk(sh.E,sh.N);
 }
 // ---------- No. 1 staircase: High Hazel to Top Hard ----------
 function stairsDown(up){

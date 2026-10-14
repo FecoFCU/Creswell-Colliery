@@ -168,7 +168,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       <div class="dist" id="wdist"></div>
     </div>
     <div class="sec note">
-      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Panel 2's east gate was a face gate until the panel finished, then became the Parkhall main return road (it turns red at that date). Fresh and return air never meet: where the roads cross, the return is carried over the intake on an air crossing, cross-cuts between them are sealed with stoppings, and pit-bottom connections pass through air doors. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
+      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Panel 2's east gate was a face gate until the panel finished, then became the Parkhall main return road (it turns red at that date). Fresh and return air never meet: where the roads cross, the return is carried over the intake on an air crossing, cross-cuts between them are sealed with stoppings, and pit-bottom connections pass through air doors. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Faces have no arches: they are 1&nbsp;m high on 5-leg chocks with an armoured face conveyor, and the view drops to a crouch there. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
       <button class="btn" id="wModel" style="margin-top:8px">Show this spot in the 3D model</button>
     </div>
   </div>
@@ -197,7 +197,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
   <div class="sec">
     <h2>Development over time</h2>
     <div class="row"><label><input type="checkbox" id="tOn">Show workings by date</label></div>
-    <div class="kv"><span id="tLab">Workings to end of 1991</span><b id="tArea">842 ha</b></div>
+    <div class="kv"><span id="tLab">Workings to end of 1991</span><b id="tArea">897 ha</b></div>
     <input type="range" id="tStep" min="0" max="9" step="1" value="9" aria-label="Year" disabled>
     <div class="ticks" aria-hidden="true"><span>1965</span><span>1971</span><span>1977</span><span>1983</span><span>1991</span></div>
     <div class="seg"><button class="btn" id="tPrev" aria-label="Earlier" disabled>◀ 3 yrs</button><button class="btn" id="tPlay" disabled>▶ Play</button><button class="btn" id="tNext" aria-label="Later" disabled>3 yrs ▶</button></div>
@@ -504,8 +504,8 @@ function buildFaces(){
   for(const P of (WALK.panels||[])){const f=faceAt(P,FACE_T); if(!f) continue; const A=acc[f.out?'o':'w'];
     const E0=P.c[0]+P.a[0]*f.t+P.l[0]*P.s[0], N0=P.c[1]+P.a[1]*f.t+P.l[1]*P.s[0], E1=P.c[0]+P.a[0]*f.t+P.l[0]*P.s[1], N1=P.c[1]+P.a[1]*f.t+P.l[1]*P.s[1];
     const L=Math.hypot(E1-E0,N1-N0), n=Math.max(2,Math.ceil(L/10)); let tx=(E1-E0)/L, tz=-(N1-N0)/L; const base=A.p.length/3;
-    for(let k=0;k<=n;k++){const E=E0+(E1-E0)*k/n,N=N0+(N1-N0)*k/n,c=[wx(E),zAt(E,N)*VE+r*0.55,wz(N)];
-      for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,(L*k/n)/(r*2.2));}}
+    for(let k=0;k<=n;k++){const E=E0+(E1-E0)*k/n,N=N0+(N1-N0)*k/n,c=[wx(E),zAt(E,N)*VE+r*0.2,wz(N)];
+      for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r*1.25,sn=Math.max(-0.05,Math.sin(t))*r*0.38;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,(L*k/n)/(r*1.2));}}
     const R1=SEG+1;for(let k=0;k<n;k++)for(let j=0;j<SEG;j++){const a=base+k*R1+j,b=a+1,c=a+R1,d=b+R1;A.i.push(a,c,b,b,c,d);}}
   for(const [key,mat] of [['w',faceMat],['o',faceOutMat]]){if(!acc[key].p.length)continue;const g=new THREE.BufferGeometry();
     g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(acc[key].u,2));
@@ -615,13 +615,13 @@ $('L_walls').addEventListener('change',e=>outer.visible=e.target.checked);
 const vis=(id,obj)=>$(id).addEventListener('change',e=>obj.visible=e.target.checked);
 vis('L_cl',hz.cl);vis('L_hh',hz.hh);vis('L_th',hz.th);vis('L_tq',tqMesh);vis('L_grid',gridGroup);vis('L_ground',ground);vis('L_shaft',shaftGroup);
 $('gOp').addEventListener('input',e=>gMat.opacity=+e.target.value);
-const TSTEPS=[1965,1968,1971,1974,1977,1980,1983,1986,1989,1991], TAREA=[4,49,126,241,343,440,547,688,794,842];
+const TSTEPS=[1965,1968,1971,1974,1977,1980,1983,1986,1989,1991], TAREA=[4,49,131,253,365,470,583,728,847,897];
 let tPlay=null;
 function setTime(){const on=$('tOn').checked, i=+$('tStep').value, y=TSTEPS[i];
   for(const id of ['tStep','tPrev','tPlay','tNext']) $(id).disabled=!on;
   FACE_T=on?(y>=1991?1991.72:y+1.0):1991.72; U_YEAR.value=on?FACE_T:3000; buildFaces();
   $('tLab').textContent=on?`Workings to end of ${y}`+(i?` (${TSTEPS[i-1]+1}–${y} highlighted)`:''):'Workings to end of 1991';
-  $('tArea').textContent=(on?TAREA[i]:842)+' ha';
+  $('tArea').textContent=(on?TAREA[i]:897)+' ha';
   if(!on&&tPlay){clearInterval(tPlay);tPlay=null;$('tPlay').textContent='▶ Play';}}
 $('tOn').addEventListener('change',()=>{if($('tOn').checked&&+$('tStep').value===9)$('tStep').value=0;setTime();});
 $('tStep').addEventListener('input',setTime);
@@ -742,7 +742,7 @@ const wscene=new THREE.Scene(); wscene.background=new THREE.Color(0x060606); wsc
 const wcam=new THREE.PerspectiveCamera(W.fov,1,0.1,500); wcam.rotation.order='YXZ';
 wscene.add(new THREE.AmbientLight(0xffffff,0.7));
 const lamp=new THREE.PointLight(0xfff0d0,4.2,0,0); wcam.add(lamp); wscene.add(wcam);
-const EYE=1.7;
+const EYE=1.7; const eyeAt=k=>(W.faceStops&&W.faceStops[k])?0.72:EYE;
 function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');draw(g,w,h);
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(8,maxAn);return t;}
 function grain(g,w,h,base,n){g.fillStyle=base;g.fillRect(0,0,w,h);
@@ -782,6 +782,7 @@ PROF.push([HW,1.6],[HW,0]);
 const PU=[0];for(let i=1;i<PROF.length;i++)PU.push(PU[i-1]+Math.hypot(PROF[i][0]-PROF[i-1][0],PROF[i][1]-PROF[i-1][1]));
 
 function buildTunnels(){
+  const FR={p:[],u:[],i:[]}, FACES=[];
   const D=W.data, A0={p:[],u:[],i:[]}, AR={p:[],u:[],i:[]}, AL={p:[],u:[],i:[]}, F={p:[],u:[],i:[]}, FL={p:[],u:[],i:[]}, FS={p:[],u:[],i:[]}, B={p:[],u:[],i:[]}, C={p:[],i:[]};
   function ribbon(T,rings,prof,uOf,vScale){ // rings: [{c:[x,y,z],s:[sx,sz],d}]
     const base=T.p.length/3, np=prof.length;
@@ -800,6 +801,11 @@ function buildTunnels(){
     const mk=(P)=>{let d=0;return P.map((c,k)=>{if(k)d+=Math.hypot(c[0]-P[k-1][0],c[1]-P[k-1][1],c[2]-P[k-1][2]);
       const a=P[Math.max(0,k-1)],b=P[Math.min(P.length-1,k+1)];let tx=b[0]-a[0],tz=b[2]-a[2];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
       return {c,s:[tz,-tx],d};});};
+    if(D.kinds[ti]==='f'){ if(full.length>1){const R=mk(full); FACES.push(R);
+        ribbon(FR,R,[[-2.3,0],[-2.3,1.0],[2.3,1.0],[2.3,0]],k=>k/3,1.5);          // coal side, roof, goaf side: 1 m seam
+        ribbon(B,R,[[-2.2,0.35],[-1.5,0.35],[-1.5,0.0]],k=>k/2,2);             // armoured face conveyor along the coal side
+        ribbon(F,R,[[-2.3,0.02],[2.3,0.02]],k=>k,2);}
+      return; }
     if(arch.length>1){const R=mk(arch); const A='as'.includes(D.kinds[ti])?AR:'li'.includes(D.kinds[ti])?AL:A0;
       ribbon(A,R,PROF,k=>PU[k]/2.5,1);
       if(!'as'.includes(D.kinds[ti])) ribbon(B,R,[[2.15,0.95],[1.05,0.95],[1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing outbye (tunnels run outbye→inbye)
@@ -817,6 +823,22 @@ function buildTunnels(){
     for(let k=1;k<=16;k++)C.i.push(b2,b2+k,b2+k+1);}
   const geo=(T,uv)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(T.p,3));
     if(uv)g.setAttribute('uv',new THREE.Float32BufferAttribute(T.u,2));g.setIndex(T.i);g.computeVertexNormals();return g;};
+  const faceRoofM=new THREE.MeshLambertMaterial({map:canvasTex(128,128,(g,w,h)=>{grain(g,w,h,'#1c1d1f',4000);g.fillStyle='rgba(255,255,255,.05)';for(let y=0;y<h;y+=9)g.fillRect(0,y,w,2);}),side:THREE.DoubleSide});
+  wscene.add(new THREE.Mesh(geo(FR,true),faceRoofM));
+  // 5-leg chocks every 1.5 m along each face: canopy, base, two front legs and three rear legs
+  const chockPos=[]; for(const R of FACES){const tot=R[R.length-1].d; for(let dd=0.75;dd<tot;dd+=1.5){let k=0;while(k<R.length-2&&R[k+1].d<dd)k++;
+      const a=R[k],b=R[k+1],f=(dd-a.d)/Math.max(0.01,b.d-a.d); chockPos.push([a.c[0]+(b.c[0]-a.c[0])*f,a.c[1]+(b.c[1]-a.c[1])*f,a.c[2]+(b.c[2]-a.c[2])*f,Math.atan2(-a.s[1],a.s[0])]);}}   // chock canopy lies across the face (along the side vector)
+  const nC=chockPos.length, m4=new THREE.Matrix4(), q=new THREE.Quaternion(), up=new THREE.Vector3(0,1,0), one=new THREE.Vector3(1,1,1);
+  const canopy=new THREE.InstancedMesh(new THREE.BoxGeometry(3.0,0.1,1.2),new THREE.MeshLambertMaterial({color:0xc8a23a}),nC);
+  const base=new THREE.InstancedMesh(new THREE.BoxGeometry(2.4,0.12,1.1),new THREE.MeshLambertMaterial({color:0x8f7a3a}),nC);
+  const legs=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.08,0.08,0.76,8),new THREE.MeshLambertMaterial({color:0xd8d8d0}),nC*5);
+  const LEG=[[-0.9,-0.3],[-0.9,0.3],[0.55,-0.4],[0.55,0],[0.55,0.4]];
+  chockPos.forEach(([x,y,z,ang],k)=>{q.setFromAxisAngle(up,ang);
+    const at=(dx,dy,dz)=>new THREE.Vector3(dx,dy,dz).applyQuaternion(q).add(new THREE.Vector3(x,y,z));
+    m4.compose(at(0,0.93,0),q,one); canopy.setMatrixAt(k,m4); m4.compose(at(0.2,0.06,0),q,one); base.setMatrixAt(k,m4);
+    LEG.forEach(([lx,lz],j)=>{m4.compose(at(lx,0.5,lz),q,one); legs.setMatrixAt(k*5+j,m4);});});
+  wscene.add(canopy,base,legs);
+  W.faceStops=D.stops.map(([E,N,z])=>FACES.some(R=>R.some(p=>Math.abs(p.c[0]-wx(E))<4&&Math.abs(p.c[2]-wz(N))<4)));
   wscene.add(new THREE.Mesh(geo(A0,true),archMat),new THREE.Mesh(geo(AR,true),archRetMat),new THREE.Mesh(geo(AL,true),archLoadMat),new THREE.Mesh(geo(F,true),floorMat),new THREE.Mesh(geo(FL,true),floorPlainMat),new THREE.Mesh(geo(FS,true),floorRopeMat),new THREE.Mesh(geo(B,true),beltMat),new THREE.Mesh(geo(C,false),capMat));
   // No. 2 shaft: lined barrel from surface to just above the Threequarter inset, pit-bottom chamber below
   const s=SHAFTS[0], top=s.top, bot=-578, h=top-bot;
@@ -876,7 +898,7 @@ function placeArrows(){
 // ---------- movement ----------
 function look(){wcam.rotation.set(W.pitch,-W.yaw,0);}
 function goTo(k,opts={}){
-  const from=wcam.position.clone(), to=SP(k).add(new THREE.Vector3(0,EYE,0));
+  const from=wcam.position.clone(), to=SP(k).add(new THREE.Vector3(0,eyeAt(k),0));
   const dist=from.distanceTo(to);
   const y0=W.yaw; let y1=opts.face??W.yaw; let dy=((y1-y0+Math.PI*3)%(Math.PI*2))-Math.PI;
   W.anim={t:0,dur:opts.dur??Math.min(900,180+dist*22),from,to,y0,dy,k};
@@ -913,7 +935,7 @@ function updWalkInfo(){
   let near='',nd=1e9; for(const [t,e,n] of DIST){const d=Math.hypot(e-E,n-N);if(d<nd){nd=d;near=t;}}
   const deg=W.data.nb[W.cur].length;
   $('wRef').textContent=sk(E,N); $('wLv').textContent=`${z.toFixed(1)} m OD`; $('wDep').textContent=`~${(GROUND-z).toFixed(0)} m`;
-  $('wGr').textContent=grad; const KN={i:'Intake (fresh air) main road',l:'Loader gate · fresh air, conveyor',s:'Supply gate · dirty side, rope haulage',a:'Return airway (No. 2 Shaft)',d:'Drift between seams',h:'High Hazel seam roadway',t:'Top Hard level roadway',f:'Face line (panel end)'};
+  $('wGr').textContent=grad; const KN={f:'Face · 1 m seam on 5-leg chocks',i:'Intake (fresh air) main road',l:'Loader gate · fresh air, conveyor',s:'Supply gate · dirty side, rope haulage',a:'Return airway (No. 2 Shaft)',d:'Drift between seams',h:'High Hazel seam roadway',t:'Top Hard level roadway',f:'Face line (panel end)'};
   $('wKind').textContent=W.kind&&KN[W.kind[W.cur]]?KN[W.kind[W.cur]]+(deg>=3?' · junction':''):deg>=3?`Junction (${deg} ways)`:deg===1?'End of roadway':(wk?'Gate road, edge of worked panel':'Roadway');
   $('wNear').textContent=near.replace(/ ·.*/,'');
   if(W.doorStops&&W.doorStops[W.cur]) $('wKind').textContent='Air doors: fresh air side / No. 2 Shaft return';
@@ -950,7 +972,7 @@ mini.addEventListener('click',e=>{ if(!W.miniView||W.anim||W.shaft) return; cons
   teleport(best); });
 $('miniZoom').onclick=()=>{W.mini=W.mini==='near'?'all':'near';$('miniZoom').textContent=W.mini==='near'?'Whole mine':'Close up';};
 function teleport(k,yaw){W.queue=[];W.anim=null;W.cur=k;if(yaw!==undefined)W.yaw=yaw;else{const n=W.data.nb[k][0];if(n!==undefined)W.yaw=headingTo(k,n);}
-  wcam.position.copy(SP(k)).add(new THREE.Vector3(0,EYE,0)); look(); placeArrows(); updWalkInfo();}
+  wcam.position.copy(SP(k)).add(new THREE.Vector3(0,eyeAt(k),0)); look(); placeArrows(); updWalkInfo();}
 
 // ---------- cage ride ----------
 function rideCage(){

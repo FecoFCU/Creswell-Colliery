@@ -197,7 +197,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <input type="range" id="tStep" min="0" max="9" step="1" value="9" aria-label="Year" disabled>
     <div class="ticks" aria-hidden="true"><span>1965</span><span>1971</span><span>1977</span><span>1983</span><span>1991</span></div>
     <div class="seg"><button class="btn" id="tPrev" aria-label="Earlier" disabled>◀ 3 yrs</button><button class="btn" id="tPlay" disabled>▶ Play</button><button class="btn" id="tNext" aria-label="Later" disabled>3 yrs ▶</button></div>
-    <div class="note">Dated from the face-advance years written on the plans (516 readings). Ground not yet worked shows as solid coal; the latest three years are highlighted. Roadways appear when the first workings they served began. Faces are placed square across each panel from its dated face lines: amber while working, grey once worked out.</div>
+    <div class="note">Dated from the face-advance years written on the plans (516 readings). Ground not yet worked shows as solid coal; the latest three years are highlighted. All faces at Creswell were advancing: each panel starts beside the main roads and its gate roads are formed behind the face, so they lengthen with it. Main roads appear when the first workings they served began. Faces are placed square across each panel from its dated face lines: amber while working, grey once worked out.</div>
   </div>
 
   <div class="sec">
@@ -464,13 +464,14 @@ function buildModelTunnels(){
   const acc={};for(const k of 'rfadht')acc[k]={p:[],u:[],i:[],y:[]};
   WALK.tunnels.forEach((line,ti)=>{
     const kd=WALK.kinds[ti], A=acc[acc[kd]&&kd!=='f'?kd:'r'];
-    const pts=line.filter((_,k)=>k%2===0||k===line.length-1).map(([E,N,z])=>[wx(E),z*VE+r*0.55,wz(N)]);
+    const sel=line.filter((_,k)=>k%2===0||k===line.length-1);
+    const pts=sel.map(([E,N,z])=>[wx(E),z*VE+r*0.55,wz(N)]), pyr=sel.map(q=>q[3]??(WALK.tyear?WALK.tyear[ti]:1900));
     if(pts.length<2) return; const base=A.p.length/3;
     let dist=0;
     pts.forEach((c,k)=>{if(k){const p=pts[k-1];dist+=Math.hypot(c[0]-p[0],c[1]-p[1],c[2]-p[2]);}
       const a=pts[Math.max(0,k-1)],b=pts[Math.min(pts.length-1,k+1)];
       let tx=b[0]-a[0],tz=b[2]-a[2];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
-      for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,dist/(r*2.2));A.y.push(WALK.tyear?WALK.tyear[ti]:1900);}});
+      for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,dist/(r*2.2));A.y.push(pyr[k]);}});
     const R1=SEG+1;for(let k=0;k<pts.length-1;k++)for(let j=0;j<SEG;j++){const a=base+k*R1+j,b=a+1,c=a+R1,d=b+R1;A.i.push(a,c,b,b,c,d);}
   });
   for(const [key,mat] of [['r',roadMat],['f',faceMat],['a',retMat],['d',driftMat],['h',hhMat],['t',thMat]]){const g=new THREE.BufferGeometry();
@@ -590,7 +591,7 @@ for(const id of ['eCut','nCut','cutTq']) $(id).addEventListener('input',applyCut
 const vis=(id,obj)=>$(id).addEventListener('change',e=>obj.visible=e.target.checked);
 vis('L_cl',hz.cl);vis('L_hh',hz.hh);vis('L_th',hz.th);vis('L_tq',tqMesh);vis('L_grid',gridGroup);vis('L_ground',ground);vis('L_shaft',shaftGroup);
 $('gOp').addEventListener('input',e=>gMat.opacity=+e.target.value);
-const TSTEPS=[1965,1968,1971,1974,1977,1980,1983,1986,1989,1991], TAREA=[4,49,127,243,343,440,549,687,794,842];
+const TSTEPS=[1965,1968,1971,1974,1977,1980,1983,1986,1989,1991], TAREA=[4,49,126,241,343,440,547,688,794,842];
 let tPlay=null;
 function setTime(){const on=$('tOn').checked, i=+$('tStep').value, y=TSTEPS[i];
   for(const id of ['tStep','tPrev','tPlay','tNext']) $(id).disabled=!on;

@@ -182,7 +182,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="row"><label><input type="checkbox" id="L_th"><span class="sw" style="background:var(--th)"></span>Top Hard</label><span class="lvl">−315.3</span></div>
     <div class="row"><label><input type="checkbox" id="L_tq" checked><span class="sw" style="background:var(--tq)"></span>Threequarter workings</label><span class="lvl">−583.3</span></div>
     <div class="row"><label><input type="checkbox" id="L_road" checked><span class="sw" style="background:#e4ebef;border:1px solid var(--rule)"></span>Roadways (tunnels)</label></div>
-    <div class="row"><label><input type="checkbox" id="L_face" checked><span class="sw" style="background:#ffc400"></span>Faces (panel ends)</label></div>
+    <div class="row"><label><input type="checkbox" id="L_face" checked><span class="sw" style="background:#ffc400"></span>Faces: working <span class="sw" style="background:#7d8ea3;margin-left:4px"></span>worked out</label></div>
     <div class="row"><label><input type="checkbox" id="L_ret" checked><span class="sw" style="background:#d7263d"></span>Return airways, No.&nbsp;2 Shaft</label></div>
     <div class="row"><label><input type="checkbox" id="L_drift" checked><span class="sw" style="background:#ff8c1a"></span>Drifts to Top Hard &amp; High Hazel</label></div>
     <div class="kv"><span>Tunnel size on screen</span><b id="tunV">14 m</b></div>
@@ -197,7 +197,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <input type="range" id="tStep" min="0" max="9" step="1" value="9" aria-label="Year" disabled>
     <div class="ticks" aria-hidden="true"><span>1965</span><span>1971</span><span>1977</span><span>1983</span><span>1991</span></div>
     <div class="seg"><button class="btn" id="tPrev" aria-label="Earlier" disabled>◀ 3 yrs</button><button class="btn" id="tPlay" disabled>▶ Play</button><button class="btn" id="tNext" aria-label="Later" disabled>3 yrs ▶</button></div>
-    <div class="note">Dated from the face-advance years written on the plans (516 readings). Ground not yet worked shows as solid coal; the latest three years are highlighted. Roadways appear when the first workings they served began.</div>
+    <div class="note">Dated from the face-advance years written on the plans (516 readings). Ground not yet worked shows as solid coal; the latest three years are highlighted. Roadways appear when the first workings they served began. Faces are placed square across each panel from its dated face lines: amber while working, grey once worked out.</div>
   </div>
 
   <div class="sec">
@@ -450,7 +450,8 @@ const chockTex=tunTex((g,w,h)=>{g.fillStyle='#bdbdbd';g.fillRect(0,0,w,h);
   for(let y=0;y<h;y+=21){g.fillStyle='#f2f2f2';g.fillRect(4,y+2,w-8,15);g.fillStyle='#6a6a6a';g.fillRect(4,y+16,w-8,3);
     g.fillStyle='#4a4a4a';g.fillRect(w*.3,y+5,6,10);g.fillRect(w*.65,y+5,6,10);}});
 const roadMat=new THREE.MeshLambertMaterial({color:0xe4ebef,emissive:0x1d2a33,map:ribTex});
-const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0x4a3300,map:chockTex});
+const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0x6a4600,map:chockTex});
+const faceOutMat=new THREE.MeshLambertMaterial({color:0x7d8ea3,emissive:0x141a22,map:chockTex});
 const retMat=new THREE.MeshLambertMaterial({color:0xe0404f,emissive:0x3a0710,map:ribTex});
 const driftMat=new THREE.MeshLambertMaterial({color:0xff9a33,emissive:0x3d1e00,map:ribTex});
 const hhMat=new THREE.MeshLambertMaterial({color:0xe2c159,emissive:0x3a2e08,map:ribTex});
@@ -462,7 +463,7 @@ function buildModelTunnels(){
   const r=+$('tunW').value/2, SEG=8;
   const acc={};for(const k of 'rfadht')acc[k]={p:[],u:[],i:[],y:[]};
   WALK.tunnels.forEach((line,ti)=>{
-    const kd=WALK.kinds[ti], A=acc[acc[kd]?kd:'r'];
+    const kd=WALK.kinds[ti], A=acc[acc[kd]&&kd!=='f'?kd:'r'];
     const pts=line.filter((_,k)=>k%2===0||k===line.length-1).map(([E,N,z])=>[wx(E),z*VE+r*0.55,wz(N)]);
     if(pts.length<2) return; const base=A.p.length/3;
     let dist=0;
@@ -477,11 +478,35 @@ function buildModelTunnels(){
     const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',f:'L_face',a:'L_ret',d:'L_drift',h:'L_drift',t:'L_drift'}[key]).checked;tunGroup.add(m);}
 }
 for(const m of [roadMat,faceMat,retMat,driftMat,hhMat,thMat]) tunTime(m);
-function queueTunnels(){if(!tunPending){tunPending=true;requestAnimationFrame(buildModelTunnels);}}
-buildModelTunnels();
+// ---- longwall faces: positioned from the fitted face advance of each panel at time T
+const faceGroup=new THREE.Group(); scene.add(faceGroup);
+let FACE_T=1991.72;      // abandonment, 20 Sept 1991
+function faceAt(P,T){const tk=P.tk,yk=P.yk,lo=Math.min(...yk),hi=Math.max(...yk);
+  if(T<=lo) return null;
+  const inc=yk[yk.length-1]>=yk[0];
+  if(T>=hi) return {t:inc?tk[tk.length-1]:tk[0],out:!(hi>=1991&&T<1992)};   // faces still standing at abandonment count as working
+  for(let k=0;k<tk.length-1;k++){const a=yk[k],b=yk[k+1];if((T>=Math.min(a,b))&&(T<=Math.max(a,b))&&a!==b){return {t:tk[k]+(tk[k+1]-tk[k])*(T-a)/(b-a),out:false};}}
+  return null;}
+function buildFaces(){
+  faceGroup.children.forEach(m=>m.geometry.dispose()); faceGroup.clear();
+  const r=+$('tunW').value/2*1.15, SEG=8, acc={w:{p:[],u:[],i:[]},o:{p:[],u:[],i:[]}};
+  for(const P of (WALK.panels||[])){const f=faceAt(P,FACE_T); if(!f) continue; const A=acc[f.out?'o':'w'];
+    const E0=P.c[0]+P.a[0]*f.t+P.l[0]*P.s[0], N0=P.c[1]+P.a[1]*f.t+P.l[1]*P.s[0], E1=P.c[0]+P.a[0]*f.t+P.l[0]*P.s[1], N1=P.c[1]+P.a[1]*f.t+P.l[1]*P.s[1];
+    const L=Math.hypot(E1-E0,N1-N0), n=Math.max(2,Math.ceil(L/10)); let tx=(E1-E0)/L, tz=-(N1-N0)/L; const base=A.p.length/3;
+    for(let k=0;k<=n;k++){const E=E0+(E1-E0)*k/n,N=N0+(N1-N0)*k/n,c=[wx(E),zAt(E,N)*VE+r*0.55,wz(N)];
+      for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,(L*k/n)/(r*2.2));}}
+    const R1=SEG+1;for(let k=0;k<n;k++)for(let j=0;j<SEG;j++){const a=base+k*R1+j,b=a+1,c=a+R1,d=b+R1;A.i.push(a,c,b,b,c,d);}}
+  for(const [key,mat] of [['w',faceMat],['o',faceOutMat]]){if(!acc[key].p.length)continue;const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(acc[key].u,2));
+    g.setAttribute('ayr',new THREE.Float32BufferAttribute(new Array(acc[key].p.length/3).fill(0),1));g.setIndex(acc[key].i);g.computeVertexNormals();
+    faceGroup.add(new THREE.Mesh(g,mat));}
+  faceGroup.visible=$('L_face').checked;
+}
+function queueTunnels(){if(!tunPending){tunPending=true;requestAnimationFrame(()=>{buildModelTunnels();buildFaces();});}}
+buildModelTunnels(); buildFaces();
 $('tunW').addEventListener('input',e=>{$('tunV').textContent=e.target.value+' m';queueTunnels();});
 $('L_road').addEventListener('change',e=>{const m=tunGroup.getObjectByName('r');if(m)m.visible=e.target.checked;});
-$('L_face').addEventListener('change',e=>{const m=tunGroup.getObjectByName('f');if(m)m.visible=e.target.checked;});
+$('L_face').addEventListener('change',e=>{faceGroup.visible=e.target.checked;});
 $('L_ret').addEventListener('change',e=>{const m=tunGroup.getObjectByName('a');if(m)m.visible=e.target.checked;});
 $('L_drift').addEventListener('change',e=>{for(const k of ['d','h','t']){const m=tunGroup.getObjectByName(k);if(m)m.visible=e.target.checked;}});
 
@@ -554,7 +579,7 @@ function applyCut(){
   else if(cutMode==='ns'){clipPlanes=[planeE];clipInter=false; cutGroup.add(new THREE.Mesh(sectionGeom(Ecut,G.N0,Ecut,G.N1),cutMat));}
   else {clipPlanes=[];}
   $('eCut').disabled=cutMode==='ew'||cutMode==='none'; $('nCut').disabled=cutMode==='ns'||cutMode==='none';
-  const tqm=[...tqPlanMats,...tqDepthMats,...planMats,roadMat,faceMat,retMat,driftMat,hhMat,thMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
+  const tqm=[...tqPlanMats,...tqDepthMats,...planMats,roadMat,faceMat,faceOutMat,retMat,driftMat,hhMat,thMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
   for(const m of mats){m.clippingPlanes=clipPlanes;m.clipIntersection=clipInter;m.needsUpdate=true;}
 }
 document.querySelectorAll('[data-cut]').forEach(b=>b.onclick=()=>{cutMode=b.dataset.cut;
@@ -565,11 +590,11 @@ for(const id of ['eCut','nCut','cutTq']) $(id).addEventListener('input',applyCut
 const vis=(id,obj)=>$(id).addEventListener('change',e=>obj.visible=e.target.checked);
 vis('L_cl',hz.cl);vis('L_hh',hz.hh);vis('L_th',hz.th);vis('L_tq',tqMesh);vis('L_grid',gridGroup);vis('L_ground',ground);vis('L_shaft',shaftGroup);
 $('gOp').addEventListener('input',e=>gMat.opacity=+e.target.value);
-const TSTEPS=[1965,1968,1971,1974,1977,1980,1983,1986,1989,1991], TAREA=[6,53,133,244,348,436,548,667,796,842];
+const TSTEPS=[1965,1968,1971,1974,1977,1980,1983,1986,1989,1991], TAREA=[4,49,127,243,343,440,549,687,794,842];
 let tPlay=null;
 function setTime(){const on=$('tOn').checked, i=+$('tStep').value, y=TSTEPS[i];
   for(const id of ['tStep','tPrev','tPlay','tNext']) $(id).disabled=!on;
-  U_YEAR.value=on?y+0.99:3000;
+  U_YEAR.value=on?y+0.99:3000; FACE_T=on?(y>=1991?1991.72:y+1.0):1991.72; buildFaces();
   $('tLab').textContent=on?`Workings to end of ${y}`+(i?` (${TSTEPS[i-1]+1}–${y} highlighted)`:''):'Workings to end of 1991';
   $('tArea').textContent=(on?TAREA[i]:842)+' ha';
   if(!on&&tPlay){clearInterval(tPlay);tPlay=null;$('tPlay').textContent='▶ Play';}}

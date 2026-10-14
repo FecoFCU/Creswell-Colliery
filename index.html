@@ -168,7 +168,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       <div class="dist" id="wdist"></div>
     </div>
     <div class="sec note">
-      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Conveyors are shown on the right-hand side facing outbye, in all roadways except the return airways; which other roads were intakes or returns is not yet mapped. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
+      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
       <button class="btn" id="wModel" style="margin-top:8px">Show this spot in the 3D model</button>
     </div>
   </div>
@@ -181,7 +181,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="row"><label><input type="checkbox" id="L_hh"><span class="sw" style="background:var(--hh)"></span>High Hazel</label><span class="lvl">−210.0</span></div>
     <div class="row"><label><input type="checkbox" id="L_th"><span class="sw" style="background:var(--th)"></span>Top Hard</label><span class="lvl">−315.3</span></div>
     <div class="row"><label><input type="checkbox" id="L_tq" checked><span class="sw" style="background:var(--tq)"></span>Threequarter workings</label><span class="lvl">−583.3</span></div>
-    <div class="row"><label><input type="checkbox" id="L_road" checked><span class="sw" style="background:#e4ebef;border:1px solid var(--rule)"></span>Roadways (tunnels)</label></div>
+    <div class="row"><label><input type="checkbox" id="L_road" checked><span class="sw" style="background:#e4ebef;border:1px solid var(--rule)"></span>Main roads</label></div>
+    <div class="row"><label><input type="checkbox" id="L_load" checked><span class="sw" style="background:#5fb0ff"></span>Loader gates (fresh air, conveyor)</label></div>
+    <div class="row"><label><input type="checkbox" id="L_sup" checked><span class="sw" style="background:#e56b6f"></span>Supply gates (dirty side, rope haulage)</label></div>
     <div class="row"><label><input type="checkbox" id="L_face" checked><span class="sw" style="background:#ffc400"></span>Faces: working <span class="sw" style="background:#7d8ea3;margin-left:4px"></span>worked out</label></div>
     <div class="row"><label><input type="checkbox" id="L_ret" checked><span class="sw" style="background:#d7263d"></span>Return airways, No.&nbsp;2 Shaft</label></div>
     <div class="row"><label><input type="checkbox" id="L_drift" checked><span class="sw" style="background:#ff8c1a"></span>Drifts to Top Hard &amp; High Hazel</label></div>
@@ -197,7 +199,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <input type="range" id="tStep" min="0" max="9" step="1" value="9" aria-label="Year" disabled>
     <div class="ticks" aria-hidden="true"><span>1965</span><span>1971</span><span>1977</span><span>1983</span><span>1991</span></div>
     <div class="seg"><button class="btn" id="tPrev" aria-label="Earlier" disabled>◀ 3 yrs</button><button class="btn" id="tPlay" disabled>▶ Play</button><button class="btn" id="tNext" aria-label="Later" disabled>3 yrs ▶</button></div>
-    <div class="note">Dated from the face-advance years written on the plans (516 readings). Ground not yet worked shows as solid coal; the latest three years are highlighted. All faces at Creswell were advancing: each panel starts beside the main roads and its gate roads are formed behind the face, so they lengthen with it. Main roads appear when the first workings they served began. Faces are placed square across each panel from its dated face lines: amber while working, grey once worked out.</div>
+    <div class="note">Dated from the face-advance years written on the plans (516 readings). Ground not yet worked shows as solid coal; the latest three years are highlighted. All faces at Creswell were advancing: each panel starts beside the main roads and its gate roads are formed behind the face, so they lengthen with it. Main roads appear when the first workings they served began. Faces are placed square across each panel from its dated face lines: amber while working, grey once worked out. Loader gates run 30&nbsp;m ahead of the face (advanced heading, Tee junction); supply gates finish flush with it.</div>
   </div>
 
   <div class="sec">
@@ -451,6 +453,8 @@ const chockTex=tunTex((g,w,h)=>{g.fillStyle='#bdbdbd';g.fillRect(0,0,w,h);
     g.fillStyle='#4a4a4a';g.fillRect(w*.3,y+5,6,10);g.fillRect(w*.65,y+5,6,10);}});
 const roadMat=new THREE.MeshLambertMaterial({color:0xe4ebef,emissive:0x1d2a33,map:ribTex});
 const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0x6a4600,map:chockTex});
+const loadMat=new THREE.MeshLambertMaterial({color:0x5fb0ff,emissive:0x0b2238,map:ribTex});
+const supMat=new THREE.MeshLambertMaterial({color:0xe56b6f,emissive:0x2e0b0d,map:ribTex});
 const faceOutMat=new THREE.MeshLambertMaterial({color:0x7d8ea3,emissive:0x141a22,map:chockTex});
 const retMat=new THREE.MeshLambertMaterial({color:0xe0404f,emissive:0x3a0710,map:ribTex});
 const driftMat=new THREE.MeshLambertMaterial({color:0xff9a33,emissive:0x3d1e00,map:ribTex});
@@ -461,7 +465,7 @@ let tunPending=false;
 function buildModelTunnels(){
   tunPending=false; tunGroup.children.forEach(m=>m.geometry.dispose()); tunGroup.clear();
   const r=+$('tunW').value/2, SEG=8;
-  const acc={};for(const k of 'rfadht')acc[k]={p:[],u:[],i:[],y:[]};
+  const acc={};for(const k of 'rfadhtls')acc[k]={p:[],u:[],i:[],y:[]};
   WALK.tunnels.forEach((line,ti)=>{
     const kd=WALK.kinds[ti], A=acc[acc[kd]&&kd!=='f'?kd:'r'];
     const sel=line.filter((_,k)=>k%2===0||k===line.length-1);
@@ -474,11 +478,11 @@ function buildModelTunnels(){
       for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,dist/(r*2.2));A.y.push(pyr[k]);}});
     const R1=SEG+1;for(let k=0;k<pts.length-1;k++)for(let j=0;j<SEG;j++){const a=base+k*R1+j,b=a+1,c=a+R1,d=b+R1;A.i.push(a,c,b,b,c,d);}
   });
-  for(const [key,mat] of [['r',roadMat],['f',faceMat],['a',retMat],['d',driftMat],['h',hhMat],['t',thMat]]){const g=new THREE.BufferGeometry();
+  for(const [key,mat] of [['r',roadMat],['a',retMat],['d',driftMat],['h',hhMat],['t',thMat],['l',loadMat],['s',supMat]]){const g=new THREE.BufferGeometry();
     g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(acc[key].u,2));g.setAttribute('ayr',new THREE.Float32BufferAttribute(acc[key].y,1));g.setIndex(acc[key].i);g.computeVertexNormals();
-    const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',f:'L_face',a:'L_ret',d:'L_drift',h:'L_drift',t:'L_drift'}[key]).checked;tunGroup.add(m);}
+    const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',a:'L_ret',d:'L_drift',h:'L_drift',t:'L_drift',l:'L_load',s:'L_sup'}[key]).checked;tunGroup.add(m);}
 }
-for(const m of [roadMat,faceMat,retMat,driftMat,hhMat,thMat]) tunTime(m);
+for(const m of [roadMat,faceMat,retMat,driftMat,hhMat,thMat,loadMat,supMat]) tunTime(m);
 // ---- longwall faces: positioned from the fitted face advance of each panel at time T
 const faceGroup=new THREE.Group(); scene.add(faceGroup);
 let FACE_T=1991.72;      // abandonment, 20 Sept 1991
@@ -508,6 +512,8 @@ buildModelTunnels(); buildFaces();
 $('tunW').addEventListener('input',e=>{$('tunV').textContent=e.target.value+' m';queueTunnels();});
 $('L_road').addEventListener('change',e=>{const m=tunGroup.getObjectByName('r');if(m)m.visible=e.target.checked;});
 $('L_face').addEventListener('change',e=>{faceGroup.visible=e.target.checked;});
+$('L_load').addEventListener('change',e=>{const m=tunGroup.getObjectByName('l');if(m)m.visible=e.target.checked;});
+$('L_sup').addEventListener('change',e=>{const m=tunGroup.getObjectByName('s');if(m)m.visible=e.target.checked;});
 $('L_ret').addEventListener('change',e=>{const m=tunGroup.getObjectByName('a');if(m)m.visible=e.target.checked;});
 $('L_drift').addEventListener('change',e=>{for(const k of ['d','h','t']){const m=tunGroup.getObjectByName(k);if(m)m.visible=e.target.checked;}});
 
@@ -580,7 +586,7 @@ function applyCut(){
   else if(cutMode==='ns'){clipPlanes=[planeE];clipInter=false; cutGroup.add(new THREE.Mesh(sectionGeom(Ecut,G.N0,Ecut,G.N1),cutMat));}
   else {clipPlanes=[];}
   $('eCut').disabled=cutMode==='ew'||cutMode==='none'; $('nCut').disabled=cutMode==='ns'||cutMode==='none';
-  const tqm=[...tqPlanMats,...tqDepthMats,...planMats,roadMat,faceMat,faceOutMat,retMat,driftMat,hhMat,thMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
+  const tqm=[...tqPlanMats,...tqDepthMats,...planMats,roadMat,faceMat,faceOutMat,loadMat,supMat,retMat,driftMat,hhMat,thMat]; const mats=[...clipped]; if($('cutTq').checked) mats.push(...tqm); else tqm.forEach(m=>m.clippingPlanes=[]);
   for(const m of mats){m.clippingPlanes=clipPlanes;m.clipIntersection=clipInter;m.needsUpdate=true;}
 }
 document.querySelectorAll('[data-cut]').forEach(b=>b.onclick=()=>{cutMode=b.dataset.cut;
@@ -595,7 +601,7 @@ const TSTEPS=[1965,1968,1971,1974,1977,1980,1983,1986,1989,1991], TAREA=[4,49,12
 let tPlay=null;
 function setTime(){const on=$('tOn').checked, i=+$('tStep').value, y=TSTEPS[i];
   for(const id of ['tStep','tPrev','tPlay','tNext']) $(id).disabled=!on;
-  U_YEAR.value=on?y+0.99:3000; FACE_T=on?(y>=1991?1991.72:y+1.0):1991.72; buildFaces();
+  FACE_T=on?(y>=1991?1991.72:y+1.0):1991.72; U_YEAR.value=on?FACE_T:3000; buildFaces();
   $('tLab').textContent=on?`Workings to end of ${y}`+(i?` (${TSTEPS[i-1]+1}–${y} highlighted)`:''):'Workings to end of 1991';
   $('tArea').textContent=(on?TAREA[i]:842)+' ha';
   if(!on&&tPlay){clearInterval(tPlay);tPlay=null;$('tPlay').textContent='▶ Play';}}
@@ -740,6 +746,14 @@ const shaftTex=canvasTex(256,256,(g,w,h)=>{grain(g,w,h,'#5a554d',9000);g.fillSty
 const archMat=new THREE.MeshLambertMaterial({map:archTex,side:THREE.DoubleSide});
 const archRetMat=new THREE.MeshLambertMaterial({map:archTex,color:0xffb0a4,side:THREE.DoubleSide});
 const floorMat=new THREE.MeshLambertMaterial({map:floorTex,side:THREE.DoubleSide});
+const floorPlainTex=canvasTex(256,256,(g,w,h)=>{grain(g,w,h,'#2a2520',12000);});
+const floorRopeTex=canvasTex(256,256,(g,w,h)=>{grain(g,w,h,'#2a2520',12000);
+  g.fillStyle='#3a2c20';for(let y=0;y<h;y+=64)g.fillRect(w*.3,y,w*.4,14);
+  g.fillStyle='#8d8a84';g.fillRect(w*.36,0,5,h);g.fillRect(w*.64-5,0,5,h);
+  g.fillStyle='#bfb59a';g.fillRect(w*.5-2,0,4,h);                                   // haulage rope between the rails
+  g.fillStyle='#6b6152';for(let y=20;y<h;y+=128)g.fillRect(w*.5-7,y,14,10);});      // rope rollers
+const floorPlainMat=new THREE.MeshLambertMaterial({map:floorPlainTex,side:THREE.DoubleSide});
+const floorRopeMat=new THREE.MeshLambertMaterial({map:floorRopeTex,side:THREE.DoubleSide});
 const beltMat=new THREE.MeshLambertMaterial({map:beltTex,side:THREE.DoubleSide});
 const capMat=new THREE.MeshLambertMaterial({color:0x2c2a26,side:THREE.DoubleSide});
 // arch profile: 4.9 m wide, 3.7 m high
@@ -749,7 +763,7 @@ PROF.push([HW,1.6],[HW,0]);
 const PU=[0];for(let i=1;i<PROF.length;i++)PU.push(PU[i-1]+Math.hypot(PROF[i][0]-PROF[i-1][0],PROF[i][1]-PROF[i-1][1]));
 
 function buildTunnels(){
-  const D=W.data, A0={p:[],u:[],i:[]}, AR={p:[],u:[],i:[]}, F={p:[],u:[],i:[]}, B={p:[],u:[],i:[]}, C={p:[],i:[]};
+  const D=W.data, A0={p:[],u:[],i:[]}, AR={p:[],u:[],i:[]}, F={p:[],u:[],i:[]}, FL={p:[],u:[],i:[]}, FS={p:[],u:[],i:[]}, B={p:[],u:[],i:[]}, C={p:[],i:[]};
   function ribbon(T,rings,prof,uOf,vScale){ // rings: [{c:[x,y,z],s:[sx,sz],d}]
     const base=T.p.length/3, np=prof.length;
     for(const r of rings) for(let k=0;k<np;k++){const [px,py]=prof[k];
@@ -769,12 +783,12 @@ function buildTunnels(){
       return {c,s:[tz,-tx],d};});};
     if(arch.length>1){const R=mk(arch); const A=D.kinds[ti]==='a'?AR:A0;
       ribbon(A,R,PROF,k=>PU[k]/2.5,1);
-      if(D.kinds[ti]!=='a') ribbon(B,R,[[2.15,0.95],[1.05,0.95],[1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing outbye (tunnels run outbye→inbye)
+      if(!'as'.includes(D.kinds[ti])) ribbon(B,R,[[2.15,0.95],[1.05,0.95],[1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing outbye (tunnels run outbye→inbye)
       for(const [end,flag] of [[R[0],fa],[R[R.length-1],fb]]) if(flag===2){ // dead end: close with a stopping
         const b=C.p.length/3;for(const [px,py] of PROF)C.p.push(end.c[0]+end.s[0]*px,end.c[1]+py,end.c[2]+end.s[1]*px);
         C.p.push(end.c[0],end.c[1]+1.8,end.c[2]);const ctr=b+PROF.length;for(let k=0;k<PROF.length-1;k++)C.i.push(b+k,b+k+1,ctr);}
     }
-    if(full.length>1) ribbon(F,mk(full),[[-HW,0.02],[HW,0.02]],k=>k,2);
+    if(full.length>1) ribbon(D.kinds[ti]==='l'?FL:D.kinds[ti]==='s'?FS:F,mk(full),[[-HW,0.02],[HW,0.02]],k=>k,2);
   });
   // junction chambers: floor and roof discs
   for(const [E,N,z] of D.junc){const x=wx(E),y=z,zz=wz(N),r=3.6,b=C.p.length/3;
@@ -784,7 +798,7 @@ function buildTunnels(){
     for(let k=1;k<=16;k++)C.i.push(b2,b2+k,b2+k+1);}
   const geo=(T,uv)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(T.p,3));
     if(uv)g.setAttribute('uv',new THREE.Float32BufferAttribute(T.u,2));g.setIndex(T.i);g.computeVertexNormals();return g;};
-  wscene.add(new THREE.Mesh(geo(A0,true),archMat),new THREE.Mesh(geo(AR,true),archRetMat),new THREE.Mesh(geo(F,true),floorMat),new THREE.Mesh(geo(B,true),beltMat),new THREE.Mesh(geo(C,false),capMat));
+  wscene.add(new THREE.Mesh(geo(A0,true),archMat),new THREE.Mesh(geo(AR,true),archRetMat),new THREE.Mesh(geo(F,true),floorMat),new THREE.Mesh(geo(FL,true),floorPlainMat),new THREE.Mesh(geo(FS,true),floorRopeMat),new THREE.Mesh(geo(B,true),beltMat),new THREE.Mesh(geo(C,false),capMat));
   // No. 2 shaft: lined barrel from surface to just above the Threequarter inset, pit-bottom chamber below
   const s=SHAFTS[0], top=s.top, bot=-578, h=top-bot;
   const sg=new THREE.CylinderGeometry(2.745,2.745,h,40,1,true); const uv=sg.attributes.uv; for(let k=0;k<uv.count;k++){uv.setXY(k,uv.getX(k)*6,uv.getY(k)*h/3);}
@@ -860,7 +874,7 @@ function updWalkInfo(){
   let near='',nd=1e9; for(const [t,e,n] of DIST){const d=Math.hypot(e-E,n-N);if(d<nd){nd=d;near=t;}}
   const deg=W.data.nb[W.cur].length;
   $('wRef').textContent=sk(E,N); $('wLv').textContent=`${z.toFixed(1)} m OD`; $('wDep').textContent=`~${(GROUND-z).toFixed(0)} m`;
-  $('wGr').textContent=grad; const KN={a:'Return airway (No. 2 Shaft)',d:'Drift between seams',h:'High Hazel seam roadway',t:'Top Hard level roadway',f:'Face line (panel end)'};
+  $('wGr').textContent=grad; const KN={l:'Loader gate · fresh air, conveyor',s:'Supply gate · dirty side, rope haulage',a:'Return airway (No. 2 Shaft)',d:'Drift between seams',h:'High Hazel seam roadway',t:'Top Hard level roadway',f:'Face line (panel end)'};
   $('wKind').textContent=W.kind&&KN[W.kind[W.cur]]?KN[W.kind[W.cur]]+(deg>=3?' · junction':''):deg>=3?`Junction (${deg} ways)`:deg===1?'End of roadway':(wk?'Gate road, edge of worked panel':'Roadway');
   $('wNear').textContent=near.replace(/ ·.*/,'');
   if(performance.now()-flashT>2500) $('ro').textContent=`${sk(E,N)} · floor ${z.toFixed(1)} m OD · heading ${(((W.yaw*180/Math.PI)%360+360)%360).toFixed(0)}° · ${grad}`;

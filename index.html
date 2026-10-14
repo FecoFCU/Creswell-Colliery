@@ -168,7 +168,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       <div class="dist" id="wdist"></div>
     </div>
     <div class="sec note">
-      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Fresh and return air never meet: where the roads cross, the return is carried over the intake on an air crossing, cross-cuts between them are sealed with stoppings, and pit-bottom connections pass through air doors. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
+      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Panel 2's east gate was a face gate until the panel finished, then became the Parkhall main return road (it turns red at that date). Fresh and return air never meet: where the roads cross, the return is carried over the intake on an air crossing, cross-cuts between them are sealed with stoppings, and pit-bottom connections pass through air doors. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
       <button class="btn" id="wModel" style="margin-top:8px">Show this spot in the 3D model</button>
     </div>
   </div>
@@ -361,8 +361,8 @@ function seamTime(mat,ytex){mat.onBeforeCompile=sh=>{sh.uniforms.uYear=U_YEAR;sh
        if(y>uYear){ diffuseColor.rgb=vec3(0.17,0.18,0.19); diffuseColor.a=min(diffuseColor.a,0.32); }
        else if(y>uYear-3.0){ diffuseColor.rgb=mix(diffuseColor.rgb,vec3(1.0,0.6,0.18),0.55); } } }`);};}
 function tunTime(mat){mat.onBeforeCompile=sh=>{sh.uniforms.uYear=U_YEAR;
-  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float ayr; varying float vYr;').replace('#include <begin_vertex>','#include <begin_vertex>\nvYr=ayr;');
-  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nuniform float uYear; varying float vYr;').replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nif(vYr>uYear) discard;');};}
+  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float ayr; attribute float ahide; varying float vYr; varying float vHide;').replace('#include <begin_vertex>','#include <begin_vertex>\nvYr=ayr; vHide=ahide;');
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nuniform float uYear; varying float vYr; varying float vHide;').replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nif(vYr>uYear || vHide<=uYear) discard;');};}
 const maxAn=renderer.capabilities.getMaxAnisotropy();
 groundTex.anisotropy=maxAn;
 tileTex.forEach((t,k)=>{t.anisotropy=maxAn; if(k%4===0||k%4===2) t.colorSpace=THREE.SRGBColorSpace;});
@@ -468,9 +468,12 @@ let tunPending=false;
 function buildModelTunnels(){
   tunPending=false; tunGroup.children.forEach(m=>m.geometry.dispose()); tunGroup.clear();
   const r=+$('tunW').value/2, SEG=8;
-  const acc={};for(const k of 'rfadhtlsi')acc[k]={p:[],u:[],i:[],y:[]};
-  WALK.tunnels.forEach((line,ti)=>{
-    const kd=WALK.kinds[ti], A=acc[acc[kd]&&kd!=='f'?kd:'r'];
+  const acc={};for(const k of 'rfadhtlsi')acc[k]={p:[],u:[],i:[],y:[],h:[]};
+  const KS=WALK.kswitch||{};
+  const passes=[]; WALK.tunnels.forEach((line,ti)=>{const sw=KS[ti];
+    if(sw){passes.push([line,ti,sw[0],sw[1],9999]);passes.push([line,ti,'a',9999,sw[1]]);} else passes.push([line,ti,WALK.kinds[ti],9999,0]);});
+  passes.forEach(([line,ti,kd,hideAt,fromY])=>{
+    const A=acc[acc[kd]&&kd!=='f'?kd:'r'];
     const sel=line.filter((_,k)=>k%2===0||k===line.length-1);
     const pts=sel.map(([E,N,z])=>[wx(E),z*VE+r*0.55,wz(N)]), pyr=sel.map(q=>q[3]??(WALK.tyear?WALK.tyear[ti]:1900));
     if(pts.length<2) return; const base=A.p.length/3;
@@ -478,11 +481,11 @@ function buildModelTunnels(){
     pts.forEach((c,k)=>{if(k){const p=pts[k-1];dist+=Math.hypot(c[0]-p[0],c[1]-p[1],c[2]-p[2]);}
       const a=pts[Math.max(0,k-1)],b=pts[Math.min(pts.length-1,k+1)];
       let tx=b[0]-a[0],tz=b[2]-a[2];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
-      for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,dist/(r*2.2));A.y.push(pyr[k]);}});
+      for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,dist/(r*2.2));A.y.push(Math.max(pyr[k],fromY));A.h.push(hideAt);}});
     const R1=SEG+1;for(let k=0;k<pts.length-1;k++)for(let j=0;j<SEG;j++){const a=base+k*R1+j,b=a+1,c=a+R1,d=b+R1;A.i.push(a,c,b,b,c,d);}
   });
   for(const [key,mat] of [['r',roadMat],['a',retMat],['d',driftMat],['h',hhMat],['t',thMat],['l',loadMat],['s',supMat],['i',intMat]]){const g=new THREE.BufferGeometry();
-    g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(acc[key].u,2));g.setAttribute('ayr',new THREE.Float32BufferAttribute(acc[key].y,1));g.setIndex(acc[key].i);g.computeVertexNormals();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(acc[key].u,2));g.setAttribute('ayr',new THREE.Float32BufferAttribute(acc[key].y,1));g.setAttribute('ahide',new THREE.Float32BufferAttribute(acc[key].h.length?acc[key].h:new Array(acc[key].y.length).fill(9999),1));g.setIndex(acc[key].i);g.computeVertexNormals();
     const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',a:'L_ret',d:'L_drift',h:'L_drift',t:'L_drift',l:'L_load',s:'L_sup',i:'L_int'}[key]).checked;tunGroup.add(m);}
 }
 for(const m of [roadMat,faceMat,retMat,driftMat,hhMat,thMat,loadMat,supMat,intMat]) tunTime(m);
@@ -506,7 +509,7 @@ function buildFaces(){
     const R1=SEG+1;for(let k=0;k<n;k++)for(let j=0;j<SEG;j++){const a=base+k*R1+j,b=a+1,c=a+R1,d=b+R1;A.i.push(a,c,b,b,c,d);}}
   for(const [key,mat] of [['w',faceMat],['o',faceOutMat]]){if(!acc[key].p.length)continue;const g=new THREE.BufferGeometry();
     g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(acc[key].u,2));
-    g.setAttribute('ayr',new THREE.Float32BufferAttribute(new Array(acc[key].p.length/3).fill(0),1));g.setIndex(acc[key].i);g.computeVertexNormals();
+    g.setAttribute('ayr',new THREE.Float32BufferAttribute(new Array(acc[key].p.length/3).fill(0),1));g.setAttribute('ahide',new THREE.Float32BufferAttribute(new Array(acc[key].p.length/3).fill(9999),1));g.setIndex(acc[key].i);g.computeVertexNormals();
     faceGroup.add(new THREE.Mesh(g,mat));}
   faceGroup.visible=$('L_face').checked;
 }

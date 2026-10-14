@@ -801,7 +801,7 @@ function buildTunnels(){
   { // No. 1 shaft: a stop at the Top Hard inset, reached only by the staircase
     const s1=SHAFTS[1]; W.data.stops.push([s1.E+2,s1.N,-316.1,0]); W.data.nb.push([]); W.no1th=W.data.stops.length-1;
     let best=0,bd=1e18; W.data.stops.forEach((q,k)=>{const dd=(q[0]-s1.E)**2+(q[1]-s1.N)**2+((q[2]+209.4)*3)**2; if(dd<bd&&k!==W.no1th){bd=dd;best=k;}}); W.no1hh=best; }
-  const FR={p:[],u:[],i:[]}, FACES=[];
+  const FR={p:[],u:[],i:[]}, FACES=[], PBW={p:[],u:[],i:[]}, PBR={p:[],u:[],i:[]}, PBRUNS=[], PBH=2.75, PBY=6.1;
   const D=W.data, A0={p:[],u:[],i:[]}, AR={p:[],u:[],i:[]}, AL={p:[],u:[],i:[]}, F={p:[],u:[],i:[]}, FL={p:[],u:[],i:[]}, FS={p:[],u:[],i:[]}, B={p:[],u:[],i:[]}, C={p:[],i:[]};
   function ribbon(T,rings,prof,uOf,vScale){ // rings: [{c:[x,y,z],s:[sx,sz],d}]
     const base=T.p.length/3, np=prof.length;
@@ -826,7 +826,15 @@ function buildTunnels(){
         ribbon(F,R,[[-2.3,0.02],[2.3,0.02]],k=>k,2);}
       return; }
     if(arch.length>1){const R=mk(arch); const A='as'.includes(D.kinds[ti])?AR:'li'.includes(D.kinds[ti])?AL:A0;
-      ribbon(A,R,PROF,k=>PU[k]/2.5,3);
+      const pbk=new Set((D.pb&&D.pb[ti])||[]); const off=full.length-arch.length>0&&arch[0]!==full[0]?1:0;
+      const isPB=j=>pbk.has(Math.min(full.length-1,j+off));
+      // runs of consecutive points: brick-walled pit bottom or ordinary arches
+      let j0=0; while(j0<R.length-1){const pbRun=isPB(j0); let j1=j0; while(j1<R.length-1&&isPB(j1+1)===pbRun) j1++;
+        const sub=R.slice(j0,Math.min(R.length,j1+2)); if(sub.length>1){
+          if(pbRun){ ribbon(PBW,sub,[[-PBH,0],[-PBH,PBY]],k=>k*PBY/3,1.5); ribbon(PBW,sub,[[PBH,PBY],[PBH,0]],k=>k*PBY/3,1.5);
+            ribbon(PBR,sub,[[-PBH,PBY],[PBH,PBY]],k=>k*2,1.2); PBRUNS.push(sub); }
+          else ribbon(A,sub,PROF,k=>PU[k]/2.5,3); }
+        j0=j1+1; }
       if('li'.includes(D.kinds[ti])) ribbon(B,R,[[2.15,0.95],[1.05,0.95],[1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing outbye (tunnels run outbye→inbye)
       for(const [end,flag] of [[R[0],fa],[R[R.length-1],fb]]) if(flag===2){ // dead end: close with a stopping
         const b=C.p.length/3;for(const [px,py] of PROF)C.p.push(end.c[0]+end.s[0]*px,end.c[1]+py,end.c[2]+end.s[1]*px);
@@ -838,12 +846,26 @@ function buildTunnels(){
   for(const [E,N,z] of D.junc){const x=wx(E),y=z,zz=wz(N),r=3.6,b=C.p.length/3;
     C.p.push(x,y+0.01,zz);for(let k=0;k<=16;k++){const a=k/16*Math.PI*2;C.p.push(x+Math.cos(a)*r,y+0.01,zz+Math.sin(a)*r);}
     for(let k=1;k<=16;k++)C.i.push(b,b+k,b+k+1);
-    const b2=C.p.length/3;C.p.push(x,y+3.7,zz);for(let k=0;k<=16;k++){const a=k/16*Math.PI*2;C.p.push(x+Math.cos(a)*r,y+3.7,zz+Math.sin(a)*r);}
+    const ry=Math.hypot(E-452302,N-373604)<70&&Math.abs(z+583)<8?6.1:3.7;
+    const b2=C.p.length/3;C.p.push(x,y+ry,zz);for(let k=0;k<=16;k++){const a=k/16*Math.PI*2;C.p.push(x+Math.cos(a)*r,y+ry,zz+Math.sin(a)*r);}
     for(let k=1;k<=16;k++)C.i.push(b2,b2+k,b2+k+1);}
   const geo=(T,uv)=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(T.p,3));if(W.bakeLit)g.userData.bake=true;
     if(uv)g.setAttribute('uv',new THREE.Float32BufferAttribute(T.u,2));g.setIndex(T.i);g.computeVertexNormals();return g;};
   const faceRoofM=new THREE.MeshLambertMaterial({map:canvasTex(128,128,(g,w,h)=>{grain(g,w,h,'#1c1d1f',4000);g.fillStyle='rgba(255,255,255,.05)';for(let y=0;y<h;y+=9)g.fillRect(0,y,w,2);}),side:THREE.DoubleSide});
   wscene.add(new THREE.Mesh(geo(FR,true),faceRoofM));
+  // No. 2 pit bottom: vertical brick walls about 20 ft high, steel girders across the roof
+  const pbBrick=canvasTex(512,512,(g,w,h)=>{g.fillStyle='#3a2e27';g.fillRect(0,0,w,h);const rows=20,bh=h/rows,bw=w/7;
+    for(let r=0;r<rows;r++){const o=(r%2)*bw/2;for(let c=-1;c<8;c++){const v=55+Math.random()*35;g.fillStyle=`rgb(${v+45|0},${v+14|0},${v|0})`;g.fillRect(c*bw+o+2,r*bh+2,bw-4,bh-4);}}
+    for(let k=0;k<40;k++){const x=Math.random()*w;const gr=g.createLinearGradient(x,0,x,h);gr.addColorStop(0,'rgba(0,0,0,.25)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x,0,4+Math.random()*6,h);}});
+  const pbWallM=litMat(new THREE.MeshPhongMaterial({map:pbBrick,specular:0x2a2a26,shininess:25,side:THREE.DoubleSide}));
+  const pbRoofM=litMat(new THREE.MeshLambertMaterial({color:0x2a2724,side:THREE.DoubleSide}));
+  wscene.add(new THREE.Mesh(geo(PBW,true),pbWallM),new THREE.Mesh(geo(PBR,true),pbRoofM));
+  const gird=[]; for(const R of PBRUNS){const tot=R[R.length-1].d-R[0].d; for(let dd=0.5;dd<tot;dd+=1.2){let k=0;while(k<R.length-2&&R[k+1].d-R[0].d<dd)k++;
+      const a=R[k],b=R[k+1],f=(dd-(a.d-R[0].d))/Math.max(0.01,b.d-a.d); gird.push([a.c[0]+(b.c[0]-a.c[0])*f,a.c[1]+(b.c[1]-a.c[1])*f,a.c[2]+(b.c[2]-a.c[2])*f,Math.atan2(-a.s[1],a.s[0])]);}}
+  if(gird.length){const gm=new THREE.InstancedMesh(new THREE.BoxGeometry(2*PBH+0.3,0.3,0.15),new THREE.MeshPhongMaterial({color:0x4d4740,specular:0x444444,shininess:30}),gird.length);
+    const gq=new THREE.Quaternion(),gy=new THREE.Vector3(0,1,0),g4=new THREE.Matrix4(),g1=new THREE.Vector3(1,1,1);
+    gird.forEach(([x,y,z,a],k)=>{gq.setFromAxisAngle(gy,a);g4.compose(new THREE.Vector3(x,y+PBY-0.18,z),gq,g1);gm.setMatrixAt(k,g4);}); wscene.add(gm);}
+  W.pbStops=D.stops.map(([E,N,z])=>PBRUNS.some(R=>R.some(p=>Math.abs(p.c[0]-wx(E))<5&&Math.abs(p.c[2]-wz(N))<5&&Math.abs(p.c[1]-z)<4)));
   // ---- fixed lighting: pit bottom, the first 200 m of the main road towards the 50s, and the junction with Panel 2's road
   const LAMPS=[]; const r50=new Set(D.route50||[]); const ZONES=[[452302,373604,75],[451863,373387,50]];
   D.tunnels.forEach((l,ti)=>{let last=null;
@@ -857,7 +879,7 @@ function buildTunnels(){
   W.LH=LH; W.lk=lk;
   const tube=new THREE.InstancedMesh(new THREE.BoxGeometry(0.1,0.07,1.5),new THREE.MeshBasicMaterial({color:0xfff6e0}),LAMPS.length);
   const lm4=new THREE.Matrix4(), qq=new THREE.Quaternion(), upv=new THREE.Vector3(0,1,0), one1=new THREE.Vector3(1,1,1);
-  LAMPS.forEach(([x,y,z,h],k)=>{qq.setFromAxisAngle(upv,-h); lm4.compose(new THREE.Vector3(x,y+3.55,z),qq,one1); tube.setMatrixAt(k,lm4);});
+  LAMPS.forEach(([x,y,z,h],k)=>{const pbh=Math.hypot(x-wx(452302),z-wz(373604))<60&&Math.abs(y+583)<8?5.7:3.55; qq.setFromAxisAngle(upv,-h); lm4.compose(new THREE.Vector3(x,y+pbh,z),qq,one1); tube.setMatrixAt(k,lm4);});
   wscene.add(tube);
   W.bakeLit=g=>{const P=g.attributes.position,a=new Float32Array(P.count);
     for(let i=0;i<P.count;i++){const x=P.getX(i),y=P.getY(i),z=P.getZ(i);let v=0;
@@ -1037,6 +1059,7 @@ function updWalkInfo(){
   $('wKind').textContent=W.kind&&KN[W.kind[W.cur]]?KN[W.kind[W.cur]]+(deg>=3?' · junction':''):deg>=3?`Junction (${deg} ways)`:deg===1?'End of roadway':(wk?'Gate road, edge of worked panel':'Roadway');
   $('wNear').textContent=near.replace(/ ·.*/,'');
   if(W.doorStops&&W.doorStops[W.cur]) $('wKind').textContent='Air doors: fresh air side / No. 2 Shaft return';
+  else if(W.pbStops&&W.pbStops[W.cur]) $('wKind').textContent='No. 2 pit bottom · brick walls, steel girders';
   else if(W.ocStops&&W.ocStops[W.cur]) $('wKind').textContent='Air crossing: return passes over the fresh-air road';
   else if(W.stopStops&&W.stopStops[W.cur]&&deg<=1) $('wKind').textContent='Stopping: cross-cut sealed between fresh and return air';
   if(performance.now()-flashT>2500) $('ro').textContent=`${sk(E,N)} · floor ${z.toFixed(1)} m OD · heading ${(((W.yaw*180/Math.PI)%360+360)%360).toFixed(0)}° · ${grad}`;

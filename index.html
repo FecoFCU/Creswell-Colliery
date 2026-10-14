@@ -265,16 +265,17 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
   <div class="sec">
     <h2>Cutaway</h2>
     <div class="seg" role="group" aria-label="Cut type">
-      <button data-cut="quarter" aria-pressed="true">Quarter</button>
+      <button data-cut="quarter" aria-pressed="false">Quarter</button>
       <button data-cut="ew" aria-pressed="false">E–W slice</button>
       <button data-cut="ns" aria-pressed="false">N–S slice</button>
-      <button data-cut="none" aria-pressed="false">None</button>
+      <button data-cut="none" aria-pressed="true">None</button>
     </div>
     <div class="kv"><span>Easting</span><b id="eV"></b></div>
     <input type="range" id="eCut" min="448400" max="454300" step="10" value="452150" aria-label="Cut easting">
     <div class="kv"><span>Northing</span><b id="nV"></b></div>
     <input type="range" id="nCut" min="370200" max="377900" step="10" value="373800" aria-label="Cut northing">
     <div class="row"><label><input type="checkbox" id="cutTq">Cut the Threequarter too</label></div>
+    <div class="row"><label><input type="checkbox" id="L_walls">Strata walls round the block</label></div>
   </div>
 
   <div class="sec">
@@ -553,7 +554,7 @@ function sectionGeom(Ea,Na,Eb,Nb){
   return g;
 }
 const outerMat=clipMat(new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide}));
-const outer=new THREE.Group(); world.add(outer);
+const outer=new THREE.Group(); world.add(outer); outer.visible=false;
 for(const [a,b,c,d] of [[G.E0,G.N1,G.E1,G.N1],[G.E1,G.N1,G.E1,G.N0],[G.E1,G.N0,G.E0,G.N0],[G.E0,G.N0,G.E0,G.N1]])
   outer.add(new THREE.Mesh(sectionGeom(a,b,c,d),outerMat));
 const cutMat=new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide});
@@ -582,7 +583,7 @@ for(const [t,E,N,L] of DIST){const lv=L??zAt(E,N);const b=document.createElement
   b.innerHTML=`<span>${t}</span><span>${lv.toFixed(0)} m</span>`;
   b.onclick=()=>flyTo(E,N,lv);$('dist').appendChild(b);}
 // ---------- cut logic ----------
-let cutMode='quarter';
+let cutMode='none';
 function applyCut(){
   const Ecut=+$('eCut').value,Ncut=+$('nCut').value;
   $('eV').textContent=Ecut.toString(); $('nV').textContent=Ncut.toString();
@@ -602,6 +603,7 @@ function applyCut(){
 document.querySelectorAll('[data-cut]').forEach(b=>b.onclick=()=>{cutMode=b.dataset.cut;
   document.querySelectorAll('[data-cut]').forEach(x=>x.setAttribute('aria-pressed',x===b));applyCut();});
 for(const id of ['eCut','nCut','cutTq']) $(id).addEventListener('input',applyCut);
+$('L_walls').addEventListener('change',e=>outer.visible=e.target.checked);
 
 // ---------- layers & view ----------
 const vis=(id,obj)=>$(id).addEventListener('change',e=>obj.visible=e.target.checked);

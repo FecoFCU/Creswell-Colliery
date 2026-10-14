@@ -161,6 +161,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
         <button class="btn" id="wJunc">Run to next junction</button>
       </div>
       <button class="btn" id="wCage">Ride the cage down No. 2 Shaft</button>
+      <button class="btn" id="wCage1">Ride No. 1 Shaft to the High Hazel</button>
+      <button class="btn" id="wStairs" disabled>Steel stairs down to the Top Hard</button>
+      <button class="btn" id="wSkip" hidden>Skip to the bottom</button>
       <div class="note">Click an arrow on the floor to walk to the next stop (about 25&nbsp;m). Drag to look around, scroll to zoom. Keys: ↑&nbsp;↓ walk, ←&nbsp;→ turn, J runs to the next junction. Click the mini-map to jump anywhere.</div>
     </div>
     <div class="sec">
@@ -787,6 +790,9 @@ PROF.push([HW,1.6],[HW,0]);
 const PU=[0];for(let i=1;i<PROF.length;i++)PU.push(PU[i-1]+Math.hypot(PROF[i][0]-PROF[i-1][0],PROF[i][1]-PROF[i-1][1]));
 
 function buildTunnels(){
+  { // No. 1 shaft: a stop at the Top Hard inset, reached only by the staircase
+    const s1=SHAFTS[1]; W.data.stops.push([s1.E+2,s1.N,-316.1,0]); W.data.nb.push([]); W.no1th=W.data.stops.length-1;
+    let best=0,bd=1e18; W.data.stops.forEach((q,k)=>{const dd=(q[0]-s1.E)**2+(q[1]-s1.N)**2+((q[2]+209.4)*3)**2; if(dd<bd&&k!==W.no1th){bd=dd;best=k;}}); W.no1hh=best; }
   const FR={p:[],u:[],i:[]}, FACES=[];
   const D=W.data, A0={p:[],u:[],i:[]}, AR={p:[],u:[],i:[]}, AL={p:[],u:[],i:[]}, F={p:[],u:[],i:[]}, FL={p:[],u:[],i:[]}, FS={p:[],u:[],i:[]}, B={p:[],u:[],i:[]}, C={p:[],i:[]};
   function ribbon(T,rings,prof,uOf,vScale){ // rings: [{c:[x,y,z],s:[sx,sz],d}]
@@ -896,6 +902,30 @@ function buildTunnels(){
     ring.position.set(SX,lv+1.6,SZ); wscene.add(ring);
     if(lit){const L=new THREE.PointLight(0xffe7c0,6,40,1.2);L.position.set(SX+Math.cos(1.2)*2.0,lv+2.5,SZ+Math.sin(1.2)*2.0);wscene.add(L);
       for(const dy of [0.2,3.3]){const lt=new THREE.Mesh(new THREE.TorusGeometry(2.62,0.05,6,40),new THREE.MeshBasicMaterial({color:0xfff2d8}));lt.rotation.x=Math.PI/2;lt.position.set(SX,lv+dy,SZ);wscene.add(lt);}}}
+  { // ---- No. 1 shaft: winding to the High Hazel, steel staircase (well lit) down to the Top Hard
+    const s1=SHAFTS[1], X=wx(s1.E), Z=wz(s1.N), t1=s1.top, b1=s1.bottom, h1=t1-b1;
+    const g1=new THREE.CylinderGeometry(2.745,2.745,h1,40,1,true); const uv1=g1.attributes.uv; for(let k=0;k<uv1.count;k++) uv1.setXY(k,uv1.getX(k)*6,uv1.getY(k)*h1/3);
+    const b1m=new THREE.Mesh(g1,sm.material); b1m.position.set(X,b1+h1/2,Z); wscene.add(b1m);
+    for(let y=t1-50;y>b1;y-=50){const gg=new THREE.Mesh(new THREE.TorusGeometry(2.55,0.16,8,48),galM);gg.rotation.x=Math.PI/2;gg.position.set(X,y,Z);wscene.add(gg);}
+    for(const [r,rad,ang,mat] of runs){const c=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h1,8),mat);c.position.set(X+Math.cos(ang)*rad,b1+h1/2,Z+Math.sin(ang)*rad);wscene.add(c);}
+    for(const [nm,lv] of s1.insets){const lit=/High Hazel|Top Hard/.test(nm);
+      const ring=new THREE.Mesh(new THREE.CylinderGeometry(2.7,2.7,3.2,40,1,true,0.4,1.6),new THREE.MeshBasicMaterial({color:lit?0xffe2b0:0x0c0a08,side:THREE.DoubleSide}));ring.position.set(X,lv+1.6,Z);wscene.add(ring);}
+    // landing at the High Hazel inset (end of the winding) and the staircase below it
+    const land=new THREE.Mesh(new THREE.CylinderGeometry(2.7,2.7,0.15,40),new THREE.MeshPhongMaterial({color:0x55524c,specular:0x333333}));land.position.set(X,-209.4-0.08,Z);wscene.add(land);
+    const stepM=new THREE.MeshPhongMaterial({color:0x6b6a66,specular:0x888888,shininess:60}), railM=new THREE.MeshPhongMaterial({color:0xb08a2a,specular:0x777755,shininess:50});
+    const yT=-209.4, yB=-316.1, drop=yT-yB, rise=0.19, nSteps=Math.ceil(drop/rise), pitch=3.2, R=1.45;
+    W.stairs={X,Z,yT,yB,pitch,R};
+    const steps=new THREE.InstancedMesh(new THREE.BoxGeometry(1.1,0.05,0.42),stepM,nSteps); const mm=new THREE.Matrix4(),qq2=new THREE.Quaternion(),yax=new THREE.Vector3(0,1,0),o1=new THREE.Vector3(1,1,1);
+    for(let k=0;k<nSteps;k++){const y=yT-k*rise, a=(k*rise)/pitch*Math.PI*2; qq2.setFromAxisAngle(yax,-a);
+      mm.compose(new THREE.Vector3(X+Math.cos(a)*R,y-0.05,Z+Math.sin(a)*R),qq2,o1); steps.setMatrixAt(k,mm);}
+    wscene.add(steps);
+    const col=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,drop,16),stepM);col.position.set(X,(yT+yB)/2,Z);wscene.add(col);
+    const railPts=[];for(let k=0;k<=nSteps;k+=2){const y=yT-k*rise+0.95, a=(k*rise)/pitch*Math.PI*2;railPts.push(new THREE.Vector3(X+Math.cos(a)*(R+0.55),y,Z+Math.sin(a)*(R+0.55)));}
+    wscene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(railPts),railPts.length*2,0.03,6),railM));
+    const lampM=new THREE.MeshBasicMaterial({color:0xfff3d6});
+    for(let y=yT-4;y>yB;y-=7){const lp=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.9,0.12),lampM);lp.position.set(X+Math.cos(y)*2.62,y,Z+Math.sin(y)*2.62);wscene.add(lp);}
+    const thf=new THREE.Mesh(new THREE.CylinderGeometry(2.7,2.7,0.15,40),land.material);thf.position.set(X,yB-0.08,Z);wscene.add(thf);
+  }
   const pb=D.stops[D.pit]; const cx0=(wx(s.E)+wx(pb[0]))/2, cz0=(wz(s.N)+wz(pb[1]))/2;
   for(const yy of [pb[2]+0.01,-578]){const d=new THREE.Mesh(new THREE.CircleGeometry(9,32),capMat);d.rotation.x=-Math.PI/2;d.position.set(cx0,yy,cz0);wscene.add(d);}
   W.cage=new THREE.Group(); // cage floor + bars, visible during the ride
@@ -977,6 +1007,7 @@ let flashT=0; function flash(t){$('ro').textContent=t;flashT=performance.now();}
 
 // ---------- info ----------
 function updWalkInfo(){
+  if($('wStairs')) $('wStairs').disabled=!(W.cur===W.no1hh||W.cur===W.no1th);
   const s=W.data.stops[W.cur],[E,N,z,wk]=s;
   const ahead=forwardNeighbour(W.yaw,0.2);
   let grad='level';
@@ -1023,22 +1054,52 @@ $('miniZoom').onclick=()=>{W.mini=W.mini==='near'?'all':'near';$('miniZoom').tex
 function teleport(k,yaw){W.queue=[];W.anim=null;W.cur=k;if(yaw!==undefined)W.yaw=yaw;else{const n=W.data.nb[k][0];if(n!==undefined)W.yaw=headingTo(k,n);}
   wcam.position.copy(SP(k)).add(new THREE.Vector3(0,eyeAt(k),0)); look(); placeArrows(); updWalkInfo();}
 
-// ---------- cage ride ----------
-function rideCage(){
-  if(W.anim) return; const s=SHAFTS[0]; W.queue=[]; arrowGroup.clear();
-  W.shaft={t:0,dur:16000,x:wx(s.E),z:wz(s.N),top:s.top+EYE,bot:-583.3+EYE,yaw0:W.yaw};
-  W.cage.visible=true; W.amb.intensity=0.15; flash('Riding the cage down No. 2 Shaft…');
+// ---------- cage rides (wound at about 33 ft/s, no balance rope, so a bounce on the brakes) ----------
+const VMAX=10.06, ACC=0.8;
+function windProfile(dist){const ta=VMAX/ACC, da=0.5*ACC*ta*ta;
+  if(dist<2*da){const t=Math.sqrt(dist/ACC);return {T:2*t,pos:tt=>tt<t?0.5*ACC*tt*tt:dist-0.5*ACC*(2*t-tt)**2,vel:tt=>tt<t?ACC*tt:ACC*(2*t-tt)};}
+  const tc=(dist-2*da)/VMAX, T=2*ta+tc;
+  return {T,pos:tt=>tt<ta?0.5*ACC*tt*tt:tt<ta+tc?da+VMAX*(tt-ta):dist-0.5*ACC*(T-tt)**2,vel:tt=>tt<ta?ACC*tt:tt<ta+tc?VMAX:ACC*(T-tt)};}
+function startRide(shaftIdx,fromY,toY,name,onEnd){
+  if(W.anim) return; const s=SHAFTS[shaftIdx]; W.queue=[]; arrowGroup.clear();
+  const dist=Math.abs(fromY-toY), P=windProfile(dist);
+  W.shaft={t:0,P,dist,dir:Math.sign(toY-fromY),from:fromY,x:wx(s.E),z:wz(s.N),yaw0:W.yaw,name,onEnd,shaft:s,bounce:0};
+  W.cage.visible=true; W.amb.intensity=0.15; $('wSkip').hidden=false; flash(`Riding the cage, ${name}…`);
 }
+function rideCage(){const s=SHAFTS[0]; startRide(0,s.top,-583.3,'No. 2 Shaft',()=>{const pb=W.data.pit;goTo(pb,{face:headingTo(pb,W.data.nb[pb][0]),dur:1200});});}
+function rideCage1(){const s=SHAFTS[1]; startRide(1,s.top,-209.4,'No. 1 Shaft to the High Hazel',()=>{teleport(W.no1hh); W.amb.intensity=0.7;
+  flash('No. 1 Shaft, High Hazel inset (−209.4). The winding stops here: take the steel stairs down to the Top Hard, or walk on to the High Hazel landing.'); $('wStairs').disabled=false;});}
+function endRide(){const S=W.shaft; W.shaft=null; W.cage.visible=false; W.amb.intensity=0.7; $('wSkip').hidden=true; if(S&&S.onEnd) S.onEnd();}
 function updShaft(dt){
-  const S=W.shaft; S.t+=dt; const u=Math.min(1,S.t/S.dur); const e=u<.1?(u/.1)**2*.05:u>.9?1-((1-u)/.1)**2*.05:.05+(u-.1)/.8*.9;
-  const y=S.top+(S.bot-S.top)*e; wcam.position.set(S.x,y,S.z); W.yaw=S.yaw0+u*0.6; W.pitch=-0.12; look();
-  W.cage.position.set(S.x,y-EYE,S.z); W.cage.rotation.y=-W.yaw;
-  const lv=y-EYE; let nxt=SHAFTS[0].insets.find(([,l])=>l<lv-1);
-  $('ro').textContent=`No. 2 Shaft · ${lv.toFixed(0)} m OD · ${(SHAFTS[0].top-lv).toFixed(0)} m down`+(nxt?` · next inset ${nxt[0]} ${nxt[1].toFixed(1)}`:'');
-  $('wLv').textContent=`${lv.toFixed(1)} m OD`; $('wDep').textContent=`${(SHAFTS[0].top-lv).toFixed(0)} m`; $('wKind').textContent='In the cage, No. 2 Shaft'; $('wRef').textContent=sk(SHAFTS[0].E,SHAFTS[0].N);
-  if(u>=1){W.shaft=null;W.cage.visible=false;W.amb.intensity=0.7;const pb=W.data.pit;goTo(pb,{face:headingTo(pb,W.data.nb[pb][0]),dur:1200});}
+  const S=W.shaft; S.t+=dt/1000; let y, v;
+  if(S.t<S.P.T){ y=S.from+S.dir*S.P.pos(S.t); v=S.P.vel(S.t); }
+  else { const tb=S.t-S.P.T; if(tb>4.5){ endRide(); return; }      // rope stretch: a damped bounce once the brakes hold
+    y=S.from+S.dir*S.dist + 0.45*Math.exp(-tb/1.1)*Math.sin(2*Math.PI*tb/1.25); v=0; }
+  wcam.position.set(S.x,y+EYE,S.z); W.yaw=S.yaw0+S.t*0.01; W.pitch=-0.12; look();
+  W.cage.position.set(S.x,y,S.z); W.cage.rotation.y=-W.yaw;
+  const sh=S.shaft; let nxt=sh.insets.find(([,l])=>S.dir<0?l<y-1:l>y+1);
+  $('ro').textContent=`${S.name} · ${y.toFixed(0)} m OD · ${(sh.top-y).toFixed(0)} m down · ${(v*3.281).toFixed(0)} ft/s`+(nxt?` · next inset ${nxt[0]} ${nxt[1].toFixed(1)}`:'');
+  $('wLv').textContent=`${y.toFixed(1)} m OD`; $('wDep').textContent=`${(sh.top-y).toFixed(0)} m`; $('wKind').textContent='In the cage, '+S.name; $('wRef').textContent=sk(sh.E,sh.N);
 }
-
+// ---------- No. 1 staircase: High Hazel to Top Hard ----------
+function stairsDown(up){
+  if(W.anim||W.shaft||!W.stairs) return; const St=W.stairs; arrowGroup.clear(); W.queue=[];
+  W.stairWalk={t:0,dur:32000,up:!!up}; W.amb.intensity=0.9; $('wSkip').hidden=false;
+  flash(up?'Climbing the steel stairs back up to the High Hazel…':'Down the steel staircase to the Top Hard (well lit)…');
+}
+function updStairs(dt){
+  const St=W.stairs, A=W.stairWalk; A.t+=dt; let u=Math.min(1,A.t/A.dur); if(A.up) u=1-u;
+  const drop=(St.yT-St.yB)*u, y=St.yT-drop, a=drop/St.pitch*Math.PI*2;
+  const x=St.X+Math.cos(a)*St.R, z=St.Z+Math.sin(a)*St.R; const bob=Math.abs(Math.sin(A.t/260))*0.05;
+  wcam.position.set(x,y+1.65+bob,z); W.yaw=Math.atan2(-Math.sin(a),-Math.cos(a))+(A.up?Math.PI:0);   // face along the helix W.pitch=A.up?0.15:-0.25; look();
+  $('ro').textContent=`No. 1 Shaft staircase · ${y.toFixed(0)} m OD · ${(-209.4-y).toFixed(0)} m below the High Hazel`;
+  $('wLv').textContent=`${y.toFixed(1)} m OD`; $('wKind').textContent='Steel staircase, No. 1 Shaft';
+  if(A.t>=A.dur) endStairs();
+}
+function endStairs(){const A=W.stairWalk; W.stairWalk=null; W.amb.intensity=0.7; $('wSkip').hidden=true;
+  if(A.up){teleport(W.no1hh); $('wStairs').textContent='Steel stairs down to the Top Hard';}
+  else {teleport(W.no1th); $('wStairs').textContent='Climb the stairs back to the High Hazel';
+    flash('Top Hard inset, No. 1 Shaft (−316.1). The Top Hard workings are not on these plans.');}}
 // ---------- look controls ----------
 let wdrag=null;
 renderer.domElement.addEventListener('pointerdown',e=>{if(W.mode!=='walk')return;wdrag={x:e.clientX,y:e.clientY,yaw:W.yaw,pitch:W.pitch,moved:false};renderer.domElement.setPointerCapture?.(e.pointerId);});
@@ -1059,7 +1120,9 @@ addEventListener('keydown',e=>{if(W.mode!=='walk'||e.target.closest('input,texta
   else if(k==='j'){runToJunction();}});
 $('wFwd').onclick=()=>step(false); $('wBack').onclick=()=>step(true); $('wJunc').onclick=runToJunction;
 $('wLeft').onclick=()=>{W.yaw-=Math.PI/4;look();updWalkInfo();}; $('wRight').onclick=()=>{W.yaw+=Math.PI/4;look();updWalkInfo();};
-$('wCage').onclick=rideCage;
+$('wCage').onclick=rideCage; $('wCage1').onclick=rideCage1;
+$('wStairs').onclick=()=>stairsDown(W.cur===W.no1th);
+$('wSkip').onclick=()=>{ if(W.shaft){W.shaft.t=W.shaft.P.T+4.6;} else if(W.stairWalk){W.stairWalk.t=W.stairWalk.dur;} };
 
 // ---------- mode switching ----------
 async function enterWalk(at){
@@ -1087,6 +1150,7 @@ function updWalk(dt){
     for(let dx=-1;dx<=1&&!near;dx++)for(let dz=-1;dz<=1&&!near;dz++){const Ls=W.LH.get((cx+dx)+','+(cz+dz));if(Ls)for(const L of Ls){if(Math.hypot(P.x-L[0],P.z-L[2])<16&&Math.abs(P.y-L[1])<8){near=true;break;}}}
     const tgt=near?0.016:0.042; wscene.fog.density+= (tgt-wscene.fog.density)*Math.min(1,dt/400);}
   if(W.shaft){updShaft(dt);return;}
+  if(W.stairWalk){updStairs(dt);return;}
   if(W.anim){const A=W.anim;A.t+=dt;const u=Math.min(1,A.t/A.dur),e=u<.5?2*u*u:1-(-2*u+2)**2/2;
     wcam.position.lerpVectors(A.from,A.to,A.queue?u:e); W.yaw=A.y0+A.dy*Math.min(1,u*1.6); look();
     if(u>=1){W.anim=null;arrive(A.k);}}

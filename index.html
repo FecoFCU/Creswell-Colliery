@@ -591,6 +591,13 @@ const DIST=[['No. 2 Shaft · pit bottom',452302,373604],['High Hazel landing (dr
 for(const [t,E,N,L] of DIST){const lv=L??zAt(E,N);const b=document.createElement('button');
   b.innerHTML=`<span>${t}</span><span>${lv.toFixed(0)} m</span>`;
   b.onclick=()=>flyTo(E,N,lv);$('dist').appendChild(b);}
+// numbered panels round No. 2 shaft, from the colliery's panel diagram: one button per panel
+function addPanelButtons(){const seen=new Map();
+  for(const P of (WALK.panels||[])){if(!P.name||seen.has(P.name)) continue; const tm=(Math.min(...P.tk)+Math.max(...P.tk))/2, sm=(P.s[0]+P.s[1])/2;
+    seen.set(P.name,[P.c[0]+P.a[0]*tm+P.l[0]*sm,P.c[1]+P.a[1]*tm+P.l[1]*sm,Math.min(...P.yk),Math.max(...P.yk)]);}
+  for(const [nm,[E,N,y0,y1]] of [...seen].sort((a,b)=>parseInt(a[0])-parseInt(b[0])||a[0].localeCompare(b[0]))){const lv=zAt(E,N),b=document.createElement('button');
+    b.innerHTML=`<span>${nm} panel</span><span>${Math.floor(y0)}–${Math.round(y1)}</span>`; b.onclick=()=>flyTo(E,N,lv); $('dist').appendChild(b);}}
+addPanelButtons();
 // ---------- cut logic ----------
 let cutMode='none';
 function applyCut(){
@@ -1013,6 +1020,13 @@ function buildTunnels(){
   W.kind=D.stops.map(([E,N,z])=>{for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){const L=H.get((Math.round(E/10)+dx)+','+(Math.round(N/10)+dy));
       if(L) for(const [q,k] of L) if(Math.abs(q[0]-E)<6&&Math.abs(q[1]-N)<6&&Math.abs(q[2]-z)<4) return k;} return 'r';});
   W.ret=W.kind.map(k=>k==='a');
+  // which numbered panel a gate or face stop belongs to (panel numbers from the colliery's panel diagram)
+  const NP=(D.panels||[]).filter(P=>P.name);
+  W.panelName=D.stops.map(([E,N],k)=>{if(!'lsf'.includes(W.kind[k])) return null; let best=null,bd=1e9;
+    for(const P of NP){const dx=E-P.c[0],dy=N-P.c[1],t=dx*P.a[0]+dy*P.a[1],v=dx*P.l[0]+dy*P.l[1];
+      const t0=Math.min(...P.tk),t1=Math.max(...P.tk),s0=Math.min(...P.s),s1=Math.max(...P.s);
+      const ot=Math.max(0,t0-t,t-t1),ov=Math.max(0,s0-v,v-s1); if(ot>80||ov>45) continue; const dd=ot+ov; if(dd<bd){bd=dd;best=P.name;}}
+    return best;});
 }
 
 // ---------- arrows ----------
@@ -1071,7 +1085,8 @@ function updWalkInfo(){
   $('wRef').textContent=sk(E,N); $('wLv').textContent=`${z.toFixed(1)} m OD`; $('wDep').textContent=`~${(GROUND-z).toFixed(0)} m`;
   $('wGr').textContent=grad; const KN={f:'Face · 1 m seam on 5-leg chocks',i:'Intake (fresh air) main road',l:'Loader gate · fresh air, conveyor',s:'Supply gate · dirty side, rope haulage',a:'Return airway (No. 2 Shaft)',d:'Drift between seams',h:'High Hazel seam roadway',t:'Top Hard level roadway',f:'Face line (panel end)'};
   $('wKind').textContent=W.kind&&KN[W.kind[W.cur]]?KN[W.kind[W.cur]]+(deg>=3?' · junction':''):deg>=3?`Junction (${deg} ways)`:deg===1?'End of roadway':(wk?'Gate road, edge of worked panel':'Roadway');
-  $('wNear').textContent=near.replace(/ ·.*/,'');
+  const pn=W.panelName&&W.panelName[W.cur]; if(pn&&W.kind&&KN[W.kind[W.cur]]){const t=$('wKind').textContent; $('wKind').textContent=pn+' '+t.charAt(0).toLowerCase()+t.slice(1);}
+  $('wNear').textContent=pn?pn+' panel':near.replace(/ ·.*/,'');
   if(W.doorStops&&W.doorStops[W.cur]) $('wKind').textContent='Air doors: fresh air side / No. 2 Shaft return';
   else if(W.pbStops&&W.pbStops[W.cur]) $('wKind').textContent='No. 2 pit bottom · whitewashed brick walls, steel girders, stone-dusted floor';
   else if(W.ocStops&&W.ocStops[W.cur]) $('wKind').textContent=W.ocStops[W.cur]===2?'Air crossing: the fresh-air drift road passes over the return':'Air crossing: return passes over the fresh-air road';

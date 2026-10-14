@@ -66,6 +66,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .pad{display:grid;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(3,38px);gap:3px;margin-top:4px}
 .pad #n_up{grid-column:2;grid-row:1}.pad #n_left{grid-column:1;grid-row:2}.pad #n_home{grid-column:2;grid-row:2}.pad #n_right{grid-column:3;grid-row:2}.pad #n_down{grid-column:2;grid-row:3}
 .row2{display:flex;gap:4px}
+.ticks{display:flex;justify-content:space-between;font:500 10.5px var(--mono);color:var(--muted);margin-top:-4px}
 @media (max-width:700px){.nav{top:auto;bottom:calc(60px + env(safe-area-inset-bottom,0px));padding:6px}.nav .pad,#n_zoom{display:none}}
 .modes button{flex:1;padding:7px 8px;font-size:13px}
 .miniWrap{position:absolute;right:16px;bottom:calc(56px + env(safe-area-inset-bottom,0px));width:min(260px,40vw);display:flex;flex-direction:column;gap:6px;z-index:5}
@@ -187,6 +188,16 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="kv"><span>Tunnel size on screen</span><b id="tunV">14 m</b></div>
     <input type="range" id="tunW" min="4" max="40" step="1" value="14" aria-label="Tunnel size">
     <div class="note">Levels are the No.&nbsp;2 shaft insets. Clowne, High Hazel and Top Hard are projected parallel to the Threequarter floor from those insets, as a guide until their own plans are added. Roadways are traced from the plans; faces are picked out automatically as the short cross-panel roads at panel ends, so a few may be missed or mislabelled. Tunnels are drawn wider than their real 4.9&nbsp;m so they show at mine scale.</div>
+  </div>
+
+  <div class="sec">
+    <h2>Development over time</h2>
+    <div class="row"><label><input type="checkbox" id="tOn">Show workings by date</label></div>
+    <div class="kv"><span id="tLab">Workings to end of 1991</span><b id="tArea">842 ha</b></div>
+    <input type="range" id="tStep" min="0" max="9" step="1" value="9" aria-label="Year" disabled>
+    <div class="ticks" aria-hidden="true"><span>1965</span><span>1971</span><span>1977</span><span>1983</span><span>1991</span></div>
+    <div class="seg"><button class="btn" id="tPrev" aria-label="Earlier" disabled>◀ 3 yrs</button><button class="btn" id="tPlay" disabled>▶ Play</button><button class="btn" id="tNext" aria-label="Later" disabled>3 yrs ▶</button></div>
+    <div class="note">Dated from the face-advance years written on the plans (516 readings). Ground not yet worked shows as solid coal; the latest three years are highlighted. Roadways appear when the first workings they served began.</div>
   </div>
 
   <div class="sec">
@@ -334,6 +345,19 @@ const [WALK,zbuf,groundTex,alphaImg,...tileTex]=await Promise.all([
   ...TILES.flatMap(([j,i])=>[TL.loadAsync(`base_${j}${i}.jpg`),TL.loadAsync(`alpha_${j}${i}.png`),TL.loadAsync(`plan_${j}${i}.jpg`),TL.loadAsync(`ink_${j}${i}.png`)])
 ]);
 groundTex.colorSpace=THREE.SRGBColorSpace;
+const yearTex=await Promise.all(TILES.map(([j,i])=>TL.loadAsync(`year_${j}${i}.png`)));
+yearTex.forEach(t=>{t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.generateMipmaps=false;});
+const U_YEAR={value:3000};   // workings later than this are hidden (3000 = show everything)
+function seamTime(mat,ytex){mat.onBeforeCompile=sh=>{sh.uniforms.uYear=U_YEAR;sh.uniforms.yearMap={value:ytex};
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nuniform float uYear; uniform sampler2D yearMap;')
+   .replace('#include <alphamap_fragment>',`#include <alphamap_fragment>
+   { float yv=floor(texture2D(yearMap,vAlphaMapUv).r*255.0+0.5);
+     if(yv>0.5){ float y=1900.0+yv;
+       if(y>uYear){ diffuseColor.rgb=vec3(0.17,0.18,0.19); diffuseColor.a=min(diffuseColor.a,0.32); }
+       else if(y>uYear-3.0){ diffuseColor.rgb=mix(diffuseColor.rgb,vec3(1.0,0.6,0.18),0.55); } } }`);};}
+function tunTime(mat){mat.onBeforeCompile=sh=>{sh.uniforms.uYear=U_YEAR;
+  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float ayr; varying float vYr;').replace('#include <begin_vertex>','#include <begin_vertex>\nvYr=ayr;');
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nuniform float uYear; varying float vYr;').replace('#include <clipping_planes_fragment>','#include <clipping_planes_fragment>\nif(vYr>uYear) discard;');};}
 const maxAn=renderer.capabilities.getMaxAnisotropy();
 groundTex.anisotropy=maxAn;
 tileTex.forEach((t,k)=>{t.anisotropy=maxAn; if(k%4===0||k%4===2) t.colorSpace=THREE.SRGBColorSpace;});
@@ -382,6 +406,7 @@ TILES.forEach(([j,i,Ea,Eb,Nt,Nb],k)=>{
   const g=boxGeom(Ea,Eb,Nb,Nt,0,false,true);
   const pm=new THREE.MeshLambertMaterial({map:tileTex[k*4],alphaMap:tileTex[k*4+1],transparent:true,side:THREE.DoubleSide,alphaTest:0.02});
   const dm=new THREE.MeshLambertMaterial({vertexColors:true,alphaMap:tileTex[k*4+1],transparent:true,side:THREE.DoubleSide,alphaTest:0.02});
+  seamTime(pm,yearTex[k]); seamTime(dm,yearTex[k]);
   const m=new THREE.Mesh(g,pm);m.renderOrder=0;tq.add(m);tqPlanMats.push(pm);tqDepthMats.push(dm);tqMeshes.push(m);
   // plan linework layer: original plan colours, paper removed
   const lm=new THREE.MeshBasicMaterial({map:tileTex[k*4+2],alphaMap:tileTex[k*4+3],transparent:true,opacity:0.8,depthWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
@@ -435,7 +460,7 @@ let tunPending=false;
 function buildModelTunnels(){
   tunPending=false; tunGroup.children.forEach(m=>m.geometry.dispose()); tunGroup.clear();
   const r=+$('tunW').value/2, SEG=8;
-  const acc={};for(const k of 'rfadht')acc[k]={p:[],u:[],i:[]};
+  const acc={};for(const k of 'rfadht')acc[k]={p:[],u:[],i:[],y:[]};
   WALK.tunnels.forEach((line,ti)=>{
     const kd=WALK.kinds[ti], A=acc[acc[kd]?kd:'r'];
     const pts=line.filter((_,k)=>k%2===0||k===line.length-1).map(([E,N,z])=>[wx(E),z*VE+r*0.55,wz(N)]);
@@ -444,13 +469,14 @@ function buildModelTunnels(){
     pts.forEach((c,k)=>{if(k){const p=pts[k-1];dist+=Math.hypot(c[0]-p[0],c[1]-p[1],c[2]-p[2]);}
       const a=pts[Math.max(0,k-1)],b=pts[Math.min(pts.length-1,k+1)];
       let tx=b[0]-a[0],tz=b[2]-a[2];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
-      for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,dist/(r*2.2));}});
+      for(let j=0;j<=SEG;j++){const t=j/SEG*Math.PI*2,cs=Math.cos(t)*r,sn=Math.sin(t)*r;A.p.push(c[0]+tz*cs,c[1]+sn,c[2]-tx*cs);A.u.push(j/SEG*2,dist/(r*2.2));A.y.push(WALK.tyear?WALK.tyear[ti]:1900);}});
     const R1=SEG+1;for(let k=0;k<pts.length-1;k++)for(let j=0;j<SEG;j++){const a=base+k*R1+j,b=a+1,c=a+R1,d=b+R1;A.i.push(a,c,b,b,c,d);}
   });
   for(const [key,mat] of [['r',roadMat],['f',faceMat],['a',retMat],['d',driftMat],['h',hhMat],['t',thMat]]){const g=new THREE.BufferGeometry();
-    g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(acc[key].u,2));g.setIndex(acc[key].i);g.computeVertexNormals();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(acc[key].p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(acc[key].u,2));g.setAttribute('ayr',new THREE.Float32BufferAttribute(acc[key].y,1));g.setIndex(acc[key].i);g.computeVertexNormals();
     const m=new THREE.Mesh(g,mat);m.name=key;m.visible=$({r:'L_road',f:'L_face',a:'L_ret',d:'L_drift',h:'L_drift',t:'L_drift'}[key]).checked;tunGroup.add(m);}
 }
+for(const m of [roadMat,faceMat,retMat,driftMat,hhMat,thMat]) tunTime(m);
 function queueTunnels(){if(!tunPending){tunPending=true;requestAnimationFrame(buildModelTunnels);}}
 buildModelTunnels();
 $('tunW').addEventListener('input',e=>{$('tunV').textContent=e.target.value+' m';queueTunnels();});
@@ -539,6 +565,21 @@ for(const id of ['eCut','nCut','cutTq']) $(id).addEventListener('input',applyCut
 const vis=(id,obj)=>$(id).addEventListener('change',e=>obj.visible=e.target.checked);
 vis('L_cl',hz.cl);vis('L_hh',hz.hh);vis('L_th',hz.th);vis('L_tq',tqMesh);vis('L_grid',gridGroup);vis('L_ground',ground);vis('L_shaft',shaftGroup);
 $('gOp').addEventListener('input',e=>gMat.opacity=+e.target.value);
+const TSTEPS=[1965,1968,1971,1974,1977,1980,1983,1986,1989,1991], TAREA=[6,53,133,244,348,436,548,667,796,842];
+let tPlay=null;
+function setTime(){const on=$('tOn').checked, i=+$('tStep').value, y=TSTEPS[i];
+  for(const id of ['tStep','tPrev','tPlay','tNext']) $(id).disabled=!on;
+  U_YEAR.value=on?y+0.99:3000;
+  $('tLab').textContent=on?`Workings to end of ${y}`+(i?` (${TSTEPS[i-1]+1}–${y} highlighted)`:''):'Workings to end of 1991';
+  $('tArea').textContent=(on?TAREA[i]:842)+' ha';
+  if(!on&&tPlay){clearInterval(tPlay);tPlay=null;$('tPlay').textContent='▶ Play';}}
+$('tOn').addEventListener('change',()=>{if($('tOn').checked&&+$('tStep').value===9)$('tStep').value=0;setTime();});
+$('tStep').addEventListener('input',setTime);
+$('tPrev').onclick=()=>{$('tStep').value=Math.max(0,+$('tStep').value-1);setTime();};
+$('tNext').onclick=()=>{$('tStep').value=Math.min(9,+$('tStep').value+1);setTime();};
+$('tPlay').onclick=()=>{if(tPlay){clearInterval(tPlay);tPlay=null;$('tPlay').textContent='▶ Play';return;}
+  if(+$('tStep').value>=9)$('tStep').value=0; setTime(); $('tPlay').textContent='❚❚ Pause';
+  tPlay=setInterval(()=>{const v=+$('tStep').value; if(v>=9){clearInterval(tPlay);tPlay=null;$('tPlay').textContent='▶ Play';return;} $('tStep').value=v+1; setTime();},1400);};
 $('L_plan').addEventListener('change',e=>planMeshes.forEach(m=>m.visible=e.target.checked));
 $('pOp').addEventListener('input',e=>planMats.forEach(m=>m.opacity=+e.target.value));
 $('m_plan').onclick=()=>{tqMeshes.forEach((m,k)=>m.material=tqPlanMats[k]);$('m_plan').setAttribute('aria-pressed',true);$('m_depth').setAttribute('aria-pressed',false);$('rampBox').hidden=true;};

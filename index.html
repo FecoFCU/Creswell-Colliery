@@ -183,8 +183,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
     <div class="row"><label><input type="checkbox" id="L_tq" checked><span class="sw" style="background:var(--tq)"></span>Threequarter workings</label><span class="lvl">−583.3</span></div>
     <div class="row"><label><input type="checkbox" id="L_road" checked><span class="sw" style="background:#e4ebef;border:1px solid var(--rule)"></span>Main roads</label></div>
     <div class="row"><label><input type="checkbox" id="L_int" checked><span class="sw" style="background:#2f6fd6"></span>Intake (fresh air) main roads</label></div>
-    <div class="row"><label><input type="checkbox" id="L_load" checked><span class="sw" style="background:#5fb0ff"></span>Loader gates (fresh air, conveyor)</label></div>
-    <div class="row"><label><input type="checkbox" id="L_sup" checked><span class="sw" style="background:#e56b6f"></span>Supply gates (dirty side, rope haulage)</label></div>
+    <div class="row"><label><input type="checkbox" id="L_load" checked><span class="sw" style="background:#2f6fd6"></span>Loader gates (fresh air, conveyor)</label></div>
+    <div class="row"><label><input type="checkbox" id="L_sup" checked><span class="sw" style="background:#d7263d"></span>Supply gates (dirty air, rope haulage)</label></div>
     <div class="row"><label><input type="checkbox" id="L_face" checked><span class="sw" style="background:#ffc400"></span>Faces: working <span class="sw" style="background:#7d8ea3;margin-left:4px"></span>worked out</label></div>
     <div class="row"><label><input type="checkbox" id="L_ret" checked><span class="sw" style="background:#d7263d"></span>Return (dirty air) roads, No.&nbsp;2 Shaft</label></div>
     <div class="row"><label><input type="checkbox" id="L_door" checked><span class="sw" style="background:#f5f1e6;border:1px solid var(--rule)"></span>Air doors <span class="sw" style="background:#4a4a4a;margin-left:4px"></span>stoppings</label></div>
@@ -456,8 +456,8 @@ const chockTex=tunTex((g,w,h)=>{g.fillStyle='#bdbdbd';g.fillRect(0,0,w,h);
 const roadMat=new THREE.MeshLambertMaterial({color:0xe4ebef,emissive:0xe4ebef,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
 const faceMat=new THREE.MeshLambertMaterial({color:0xffc400,emissive:0xffc400,emissiveIntensity:0.45,map:chockTex,emissiveMap:chockTex});
 const intMat=new THREE.MeshLambertMaterial({color:0x2f6fd6,emissive:0x2f6fd6,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
-const loadMat=new THREE.MeshLambertMaterial({color:0x5fb0ff,emissive:0x5fb0ff,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
-const supMat=new THREE.MeshLambertMaterial({color:0xe56b6f,emissive:0xe56b6f,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
+const loadMat=new THREE.MeshLambertMaterial({color:0x2f6fd6,emissive:0x2f6fd6,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
+const supMat=new THREE.MeshLambertMaterial({color:0xd7263d,emissive:0xd7263d,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
 const faceOutMat=new THREE.MeshLambertMaterial({color:0x7d8ea3,emissive:0x7d8ea3,emissiveIntensity:0.35,map:chockTex,emissiveMap:chockTex});
 const retMat=new THREE.MeshLambertMaterial({color:0xe0404f,emissive:0xe0404f,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});
 const driftMat=new THREE.MeshLambertMaterial({color:0xff9a33,emissive:0xff9a33,emissiveIntensity:0.45,map:ribTex,emissiveMap:ribTex});

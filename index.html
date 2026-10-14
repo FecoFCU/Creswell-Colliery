@@ -171,7 +171,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
       <div class="dist" id="wdist"></div>
     </div>
     <div class="sec note">
-      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Panel 2's east gate was a face gate until the panel finished, then became the Parkhall main return road (it turns red at that date). Fresh and return air never meet: where the roads cross, the return is carried over the intake on an air crossing, cross-cuts between them are sealed with stoppings, and pit-bottom connections pass through air doors. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Faces have no arches: they are 1&nbsp;m high on 5-leg chocks with an armoured face conveyor, and the view drops to a crouch there. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
+      Roadways are traced from the plan's double lines and drawn as 4.9&nbsp;m × 3.7&nbsp;m steel-arched gates following the Threequarter floor levels. Panel 2's east gate was a face gate until the panel finished, then became the Parkhall main return road (it turns red at that date). Fresh and return air never meet: where the roads cross, the return is carried over the intake on an air crossing, cross-cuts between them are sealed with stoppings, and pit-bottom connections pass through air doors. Loader gates carry the conveyor (right-hand side facing outbye) and have an advanced heading ahead of the face; supply gates carry a rope-hauled rail track and no conveyor; which other roads were intakes or returns is not yet mapped. Faces have no arches: they are 1&nbsp;m high on 5-leg chocks with an armoured face conveyor, and the view drops to a crouch there. Arches are lagged with corrugated steel sheets about 3&nbsp;ft by 5&nbsp;ft. Conveyors run only in loader gates and intake roads. Rails and arches are illustrative, not surveyed. Worked-out panels (goaf) are not walkable.
       <button class="btn" id="wModel" style="margin-top:8px">Show this spot in the 3D model</button>
     </div>
   </div>
@@ -756,12 +756,20 @@ function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;
 function grain(g,w,h,base,n){g.fillStyle=base;g.fillRect(0,0,w,h);
   for(let i=0;i<n;i++){const l=Math.random()<.5;g.fillStyle=l?'rgba(255,255,255,.06)':'rgba(0,0,0,.18)';g.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*3,1+Math.random()*3);}}
 // one steel arch per metre (texture v = metres along roadway), mesh lagging between
-const archTex=canvasTex(256,256,(g,w,h)=>{grain(g,w,h,'#3d3a35',9000);
-  g.strokeStyle='rgba(18,17,15,.55)';g.lineWidth=2;
-  for(let x=0;x<w;x+=21){g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();}
-  for(let y=0;y<h;y+=21){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}
-  const gr=g.createLinearGradient(0,0,0,44);gr.addColorStop(0,'#1f1915');gr.addColorStop(.25,'#8c735c');gr.addColorStop(.5,'#6b5644');gr.addColorStop(.8,'#3b2f25');gr.addColorStop(1,'#16110d');
-  g.fillStyle=gr;g.fillRect(0,0,w,44);});
+const archTex=canvasTex(256,768,(g,w,h)=>{     // u: 2.5 m round the arch, v: 3 m along the roadway
+  const pxm=w/2.5, pvm=h/3;
+  g.fillStyle='#4a4741';g.fillRect(0,0,w,h);
+  // corrugations run along the roadway: shade across u with a ~75 mm pitch
+  for(let x=0;x<w;x++){const ph=Math.sin(x/(0.075*pxm)*Math.PI*2);g.fillStyle=ph>0?`rgba(255,255,255,${0.10*ph})`:`rgba(0,0,0,${-0.28*ph})`;g.fillRect(x,0,1,h);}
+  // dirt, rust and wet streaks
+  for(let k=0;k<5000;k++){g.fillStyle=Math.random()<.5?'rgba(90,60,35,.10)':'rgba(0,0,0,.16)';g.fillRect(Math.random()*w,Math.random()*h,1+Math.random()*4,2+Math.random()*10);}
+  // sheet joints: 3 ft (0.91 m) across, 5 ft (1.52 m) along
+  g.fillStyle='rgba(10,9,8,.75)';
+  for(let x=0;x<w;x+=0.914*pxm) g.fillRect(x,0,2,h);
+  for(let y=0;y<h;y+=1.524*pvm) g.fillRect(0,y,w,3);
+  // steel arches every metre, inside the sheets
+  for(let y=0;y<h;y+=pvm){const gr=g.createLinearGradient(0,y,0,y+0.16*pvm);gr.addColorStop(0,'#1f1915');gr.addColorStop(.25,'#8c735c');gr.addColorStop(.5,'#6b5644');gr.addColorStop(.8,'#3b2f25');gr.addColorStop(1,'#16110d');g.fillStyle=gr;g.fillRect(0,y,w,0.16*pvm);}
+});
 const floorTex=canvasTex(256,256,(g,w,h)=>{grain(g,w,h,'#2a2520',12000);
   g.fillStyle='#3a2c20';for(let y=0;y<h;y+=64)g.fillRect(w*.3,y,w*.4,14);           // sleepers every 0.5 m (v = m/2)
   g.fillStyle='#8d8a84';g.fillRect(w*.36,0,5,h);g.fillRect(w*.64-5,0,5,h);});       // rails
@@ -818,8 +826,8 @@ function buildTunnels(){
         ribbon(F,R,[[-2.3,0.02],[2.3,0.02]],k=>k,2);}
       return; }
     if(arch.length>1){const R=mk(arch); const A='as'.includes(D.kinds[ti])?AR:'li'.includes(D.kinds[ti])?AL:A0;
-      ribbon(A,R,PROF,k=>PU[k]/2.5,1);
-      if(!'as'.includes(D.kinds[ti])) ribbon(B,R,[[2.15,0.95],[1.05,0.95],[1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing outbye (tunnels run outbye→inbye)
+      ribbon(A,R,PROF,k=>PU[k]/2.5,3);
+      if('li'.includes(D.kinds[ti])) ribbon(B,R,[[2.15,0.95],[1.05,0.95],[1.05,0.0]],k=>k/2,2); // belt conveyor: fresh-air roads only, right-hand side facing outbye (tunnels run outbye→inbye)
       for(const [end,flag] of [[R[0],fa],[R[R.length-1],fb]]) if(flag===2){ // dead end: close with a stopping
         const b=C.p.length/3;for(const [px,py] of PROF)C.p.push(end.c[0]+end.s[0]*px,end.c[1]+py,end.c[2]+end.s[1]*px);
         C.p.push(end.c[0],end.c[1]+1.8,end.c[2]);const ctr=b+PROF.length;for(let k=0;k<PROF.length-1;k++)C.i.push(b+k,b+k+1,ctr);}

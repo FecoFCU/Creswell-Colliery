@@ -740,7 +740,7 @@ function updScale(){const dist=camera.position.distanceTo(controls.target);
 const W={mode:'model',data:WALK,built:false,cur:0,yaw:0,pitch:-0.05,fov:72,anim:null,queue:[],shaft:null,mini:'near',lastPick:null};
 const wscene=new THREE.Scene(); wscene.background=new THREE.Color(0x060606); wscene.fog=new THREE.FogExp2(0x060606,0.042);
 const wcam=new THREE.PerspectiveCamera(W.fov,1,0.1,500); wcam.rotation.order='YXZ';
-wscene.add(new THREE.AmbientLight(0xffffff,0.7));
+W.amb=new THREE.AmbientLight(0xffffff,0.7); wscene.add(W.amb);
 const lamp=new THREE.PointLight(0xfff0d0,4.2,0,0); wcam.add(lamp); wscene.add(wcam);
 const EYE=1.7;
 const LITMATS=[];
@@ -871,11 +871,31 @@ function buildTunnels(){
   // No. 2 shaft: lined barrel from surface to just above the Threequarter inset, pit-bottom chamber below
   const s=SHAFTS[0], top=s.top, bot=-578, h=top-bot;
   const sg=new THREE.CylinderGeometry(2.745,2.745,h,40,1,true); const uv=sg.attributes.uv; for(let k=0;k<uv.count;k++){uv.setXY(k,uv.getX(k)*6,uv.getY(k)*h/3);}
-  const sm=new THREE.Mesh(sg,new THREE.MeshLambertMaterial({map:shaftTex,side:THREE.DoubleSide})); sm.position.set(wx(s.E),bot+h/2,wz(s.N)); wscene.add(sm);
+  // brick-lined barrel, wet and greasy: a glossy material that picks up the cap lamp
+  const brickTex=canvasTex(512,512,(g,w,h)=>{g.fillStyle='#2b201a';g.fillRect(0,0,w,h);
+    const rows=40,bh=h/rows,bw=w/13;
+    for(let r=0;r<rows;r++){const off=(r%2)*bw/2;for(let c=-1;c<14;c++){const v=40+Math.random()*30;
+      g.fillStyle=`rgb(${v+38|0},${v+8|0},${v-6|0})`;g.fillRect(c*bw+off+1.5,r*bh+1.5,bw-3,bh-3);}}
+    for(let k=0;k<70;k++){const x=Math.random()*w,len=60+Math.random()*300;const gr=g.createLinearGradient(x,0,x,len);
+      gr.addColorStop(0,'rgba(0,0,0,.35)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x,Math.random()*h,3+Math.random()*8,len);}});
+  const sm=new THREE.Mesh(sg,new THREE.MeshPhongMaterial({map:brickTex,color:0x9a8a80,specular:0x5a5a52,shininess:55,side:THREE.DoubleSide}));
+  sm.position.set(wx(s.E),bot+h/2,wz(s.N)); wscene.add(sm);
+  const SX=wx(s.E),SZ=wz(s.N);
+  // water collecting galleries every 50 m
+  const galM=new THREE.MeshPhongMaterial({color:0x3a3530,specular:0x444444,shininess:40});
+  for(let y=top-50;y>bot;y-=50){const g1=new THREE.Mesh(new THREE.TorusGeometry(2.55,0.16,8,48),galM);g1.rotation.x=Math.PI/2;g1.position.set(SX,y,SZ);wscene.add(g1);
+    const lip=new THREE.Mesh(new THREE.CylinderGeometry(2.74,2.74,0.35,48,1,true),galM);lip.position.set(SX,y+0.1,SZ);wscene.add(lip);}
+  // pipes and cables running down the shaft side to the insets
+  const pipeM=new THREE.MeshPhongMaterial({color:0x4a4640,specular:0x666666,shininess:70}), cabM=new THREE.MeshPhongMaterial({color:0x111111,specular:0x333333,shininess:30});
+  const runs=[[0.15,2.42,1.95,pipeM],[0.11,2.45,2.15,pipeM],[0.13,2.43,2.38,pipeM],[0.035,2.6,2.6,cabM],[0.035,2.6,2.68,cabM],[0.04,2.59,2.76,cabM],[0.03,2.61,2.84,cabM],[0.045,2.58,2.92,cabM],[0.035,2.6,3.0,cabM]];
+  for(const [r,rad,ang,mat] of runs){const c=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,8),mat);c.position.set(SX+Math.cos(ang)*rad,bot+h/2,SZ+Math.sin(ang)*rad);wscene.add(c);}
+  // insets: dark openings, the High Hazel and Top Hard insets brightly lit
   for(const [nm,lv] of s.insets){ if(lv<bot) continue;
-    const ring=new THREE.Mesh(new THREE.CylinderGeometry(2.7,2.7,3,40,1,true),new THREE.MeshBasicMaterial({color:0x14110e,side:THREE.DoubleSide}));
-    ring.position.set(wx(s.E),lv+1.5,wz(s.N)); wscene.add(ring);
-    const lt=new THREE.Mesh(new THREE.TorusGeometry(2.6,0.06,6,40),new THREE.MeshBasicMaterial({color:0xffd9a0}));lt.rotation.x=Math.PI/2;lt.position.set(wx(s.E),lv+3.2,wz(s.N));wscene.add(lt);}
+    const lit=/High Hazel|Top Hard/.test(nm);
+    const ring=new THREE.Mesh(new THREE.CylinderGeometry(2.7,2.7,3.2,40,1,true,0.4,1.6),new THREE.MeshBasicMaterial({color:lit?0xffe2b0:0x0c0a08,side:THREE.DoubleSide}));
+    ring.position.set(SX,lv+1.6,SZ); wscene.add(ring);
+    if(lit){const L=new THREE.PointLight(0xffe7c0,6,40,1.2);L.position.set(SX+Math.cos(1.2)*2.0,lv+2.5,SZ+Math.sin(1.2)*2.0);wscene.add(L);
+      for(const dy of [0.2,3.3]){const lt=new THREE.Mesh(new THREE.TorusGeometry(2.62,0.05,6,40),new THREE.MeshBasicMaterial({color:0xfff2d8}));lt.rotation.x=Math.PI/2;lt.position.set(SX,lv+dy,SZ);wscene.add(lt);}}}
   const pb=D.stops[D.pit]; const cx0=(wx(s.E)+wx(pb[0]))/2, cz0=(wz(s.N)+wz(pb[1]))/2;
   for(const yy of [pb[2]+0.01,-578]){const d=new THREE.Mesh(new THREE.CircleGeometry(9,32),capMat);d.rotation.x=-Math.PI/2;d.position.set(cx0,yy,cz0);wscene.add(d);}
   W.cage=new THREE.Group(); // cage floor + bars, visible during the ride
@@ -1007,7 +1027,7 @@ function teleport(k,yaw){W.queue=[];W.anim=null;W.cur=k;if(yaw!==undefined)W.yaw
 function rideCage(){
   if(W.anim) return; const s=SHAFTS[0]; W.queue=[]; arrowGroup.clear();
   W.shaft={t:0,dur:16000,x:wx(s.E),z:wz(s.N),top:s.top+EYE,bot:-583.3+EYE,yaw0:W.yaw};
-  W.cage.visible=true; flash('Riding the cage down No. 2 Shaft…');
+  W.cage.visible=true; W.amb.intensity=0.15; flash('Riding the cage down No. 2 Shaft…');
 }
 function updShaft(dt){
   const S=W.shaft; S.t+=dt; const u=Math.min(1,S.t/S.dur); const e=u<.1?(u/.1)**2*.05:u>.9?1-((1-u)/.1)**2*.05:.05+(u-.1)/.8*.9;
@@ -1016,7 +1036,7 @@ function updShaft(dt){
   const lv=y-EYE; let nxt=SHAFTS[0].insets.find(([,l])=>l<lv-1);
   $('ro').textContent=`No. 2 Shaft · ${lv.toFixed(0)} m OD · ${(SHAFTS[0].top-lv).toFixed(0)} m down`+(nxt?` · next inset ${nxt[0]} ${nxt[1].toFixed(1)}`:'');
   $('wLv').textContent=`${lv.toFixed(1)} m OD`; $('wDep').textContent=`${(SHAFTS[0].top-lv).toFixed(0)} m`; $('wKind').textContent='In the cage, No. 2 Shaft'; $('wRef').textContent=sk(SHAFTS[0].E,SHAFTS[0].N);
-  if(u>=1){W.shaft=null;W.cage.visible=false;const pb=W.data.pit;goTo(pb,{face:headingTo(pb,W.data.nb[pb][0]),dur:1200});}
+  if(u>=1){W.shaft=null;W.cage.visible=false;W.amb.intensity=0.7;const pb=W.data.pit;goTo(pb,{face:headingTo(pb,W.data.nb[pb][0]),dur:1200});}
 }
 
 // ---------- look controls ----------
